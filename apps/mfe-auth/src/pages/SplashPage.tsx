@@ -1,181 +1,108 @@
 import { useNavigate } from "react-router-dom";
 import { startSession } from "../lib/session";
-import { AuthLayout } from "../components/AuthLayout";
-import { FIGMA_PET_HEALTH_TOKENS } from "../config/figma";
+import { Activity, Shield, Stethoscope, ArrowRight } from "lucide-react";
+import { Button } from "../components/ui/button";
 import splashHeroImage from "../assets/images/splash-hero.jpg";
 
-/** Matches “Get Started Landing Page” (node `411:37183`) in team library — see `src/config/figma.ts`. */
-const BRAND = FIGMA_PET_HEALTH_TOKENS.brand;
-
-function IconSymptom() {
-  return (
-    <svg width={20} height={20} viewBox="0 0 24 24" fill="none" aria-hidden className="text-[#2463eb]">
-      <path
-        d="M12 22s8-4.5 8-11.8V5l-8-3-8 3v5.2C4 17.5 12 22 12 22z"
-        stroke="currentColor"
-        strokeWidth="2"
-        strokeLinejoin="round"
-      />
-      <path d="M12 8v4M10 10h4" stroke="currentColor" strokeWidth="2" strokeLinecap="round" />
-    </svg>
-  );
-}
-
-function IconWellness() {
-  return (
-    <svg width={18} height={18} viewBox="0 0 24 24" fill="none" aria-hidden className="text-[#2463eb]">
-      <path d="M3 3v18h18" stroke="currentColor" strokeWidth="2" strokeLinecap="round" />
-      <path d="M7 16l4-4 4 4 6-7" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
-    </svg>
-  );
-}
-
-function IconVet() {
-  return (
-    <svg width={20} height={20} viewBox="0 0 24 24" fill="none" aria-hidden className="text-[#2463eb]">
-      <path
-        d="M12 22s8-4.5 8-11.8V5l-8-3-8 3v5.2C4 17.5 12 22 12 22z"
-        stroke="currentColor"
-        strokeWidth="2"
-        strokeLinejoin="round"
-      />
-      <path d="M9 12l2 2 4-4" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
-    </svg>
-  );
-}
-
-function IconPaw() {
-  return (
-    <svg width={50} height={48} viewBox="0 0 24 24" fill="white" aria-hidden className="drop-shadow-sm">
-      <ellipse cx="12" cy="17.5" rx="3.8" ry="3.2" />
-      <circle cx="8" cy="11" r="2.1" />
-      <circle cx="16" cy="11" r="2.1" />
-      <circle cx="6.2" cy="14.5" r="1.85" />
-      <circle cx="17.8" cy="14.5" r="1.85" />
-    </svg>
-  );
-}
-
-function IconMedicalBadge() {
-  return (
-    <svg width={18} height={18} viewBox="0 0 24 24" fill="none" aria-hidden className="text-[#2463eb]">
-      <rect x="3" y="3" width="18" height="18" rx="4" stroke="currentColor" strokeWidth="2" />
-      <path d="M12 8v8M8 12h8" stroke="currentColor" strokeWidth="2" strokeLinecap="round" />
-    </svg>
-  );
-}
-
 const features = [
-  {
-    title: "Symptom Checker",
-    description: "Instant AI-driven clinical analysis",
-    icon: <IconSymptom />,
-  },
-  {
-    title: "Wellness Tracking",
-    description: "Monitor vital signs and daily activity",
-    icon: <IconWellness />,
-  },
-  {
-    title: "Vet Insights",
-    description: "Expert-backed preventative data",
-    icon: <IconVet />,
-  },
+  { icon: Activity, title: "AI Risk Analysis", desc: "Early disease detection with confidence scoring" },
+  { icon: Shield, title: "Health Tracking", desc: "Vaccination records and wellness timeline" },
+  { icon: Stethoscope, title: "Clinic Network", desc: "Find qualified veterinary care nearby" },
 ];
 
 export function SplashPage() {
   const navigate = useNavigate();
 
   return (
-    <AuthLayout tone="landing" title="PetHealth AI" subtitle="AI-Powered Pet Health Monitoring.">
-      <div className="flex min-h-full w-full flex-1 flex-col">
-        <div className="flex flex-1 flex-col items-center overflow-hidden px-6 pb-4 pt-12">
-          <div className="flex w-full flex-col items-center px-0 pb-8">
-            <div className="relative mb-10 flex flex-col items-center">
-              <div
-                className="relative flex size-24 items-center justify-center rounded-[24px] shadow-[0px_10px_15px_-3px_rgba(36,99,235,0.2),0px_4px_6px_-4px_rgba(36,99,235,0.2)]"
-                style={{ backgroundColor: BRAND }}
-              >
-                <div className="h-[47.5px] w-[50px]">
-                  <IconPaw />
-                </div>
-              </div>
-              <div className="absolute -bottom-3 left-1/2 flex size-10 -translate-x-1/2 items-center justify-center rounded-full border-4 border-[#f6f6f8] bg-white p-1 shadow-[0px_4px_6px_-1px_rgba(0,0,0,0.1),0px_2px_4px_-2px_rgba(0,0,0,0.1)]">
-                <IconMedicalBadge />
-              </div>
+    <div className="flex min-h-screen w-full flex-col lg:flex-row">
+      {/* Left — visual panel */}
+      <div className="relative flex flex-col justify-end bg-neutral-950 p-6 pb-10 text-white lg:w-1/2 lg:p-12">
+        <img
+          src={splashHeroImage}
+          alt=""
+          className="absolute inset-0 h-full w-full object-cover opacity-20"
+        />
+        <div className="relative z-10">
+          <div className="mb-6 flex items-center gap-2.5">
+            <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-white/10">
+              <svg viewBox="0 0 24 24" fill="currentColor" className="h-4 w-4">
+                <ellipse cx="12" cy="17.5" rx="3.5" ry="3" />
+                <circle cx="8.2" cy="11.2" r="1.8" />
+                <circle cx="15.8" cy="11.2" r="1.8" />
+                <circle cx="6.5" cy="14.8" r="1.6" />
+                <circle cx="17.5" cy="14.8" r="1.6" />
+              </svg>
             </div>
-
-            <div className="flex max-w-[384px] flex-col gap-4">
-              <h1 className="text-center text-[36px] font-bold leading-10 tracking-[-0.9px] text-[#0f172a]">
-                PetHealth AI
-              </h1>
-              <p className="text-center text-[18px] font-normal leading-[29.25px] text-[#475569]">
-                AI-Powered Pet Health Monitoring.
-                <br />
-                Proactive care for your best friend
-                <br />
-                using advanced diagnostics.
-              </p>
-            </div>
+            <span className="text-[15px] font-semibold tracking-tight">PetCare AI</span>
           </div>
 
-          <div className="flex w-full max-w-[448px] flex-col gap-4 pt-2">
-            {features.map((item) => (
-              <div
-                key={item.title}
-                className="flex w-full items-center gap-4 rounded-[24px] border border-[rgba(36,99,235,0.1)] bg-white p-[17px] shadow-[0px_1px_2px_0px_rgba(0,0,0,0.05)]"
-              >
-                <div
-                  className="flex size-12 shrink-0 items-center justify-center rounded-2xl"
-                  style={{ backgroundColor: "rgba(36,99,235,0.1)" }}
-                >
-                  {item.icon}
+          <h1 className="max-w-md text-3xl font-semibold leading-tight tracking-tight lg:text-4xl">
+            Companion animal health intelligence
+          </h1>
+          <p className="mt-3 max-w-sm text-sm leading-relaxed text-neutral-400">
+            AI-driven decision support for early disease risk awareness.
+            Built for veterinary teams and pet owners.
+          </p>
+
+          <div className="mt-8 hidden gap-6 lg:flex">
+            {features.map((f) => (
+              <div key={f.title} className="flex-1">
+                <f.icon className="mb-2 h-4 w-4 text-neutral-500" />
+                <p className="text-[13px] font-medium text-neutral-300">{f.title}</p>
+                <p className="mt-0.5 text-xs text-neutral-500">{f.desc}</p>
+              </div>
+            ))}
+          </div>
+        </div>
+      </div>
+
+      {/* Right — CTA */}
+      <div className="flex flex-1 flex-col items-center justify-center bg-white px-6 py-12 lg:px-16">
+        <div className="w-full max-w-sm">
+          {/* Mobile features */}
+          <div className="mb-10 space-y-4 lg:hidden">
+            {features.map((f) => (
+              <div key={f.title} className="flex items-start gap-3">
+                <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-neutral-100">
+                  <f.icon className="h-4 w-4 text-neutral-500" />
                 </div>
-                <div className="min-w-0 flex-1">
-                  <h2 className="text-base font-bold leading-6 text-[#0f172a]">{item.title}</h2>
-                  <p className="text-sm font-normal leading-5 text-[#64748b]">{item.description}</p>
+                <div>
+                  <p className="text-sm font-medium text-neutral-900">{f.title}</p>
+                  <p className="text-xs text-neutral-500">{f.desc}</p>
                 </div>
               </div>
             ))}
           </div>
 
-          <div className="mt-12 w-full max-w-[384px] overflow-hidden rounded-[24px] shadow-[0px_25px_50px_-12px_rgba(0,0,0,0.25)]">
-            <div className="relative h-48 w-full overflow-hidden">
-              <img
-                src={splashHeroImage}
-                alt="Golden retriever portrait"
-                className="h-full w-full object-cover object-center"
-              />
-            </div>
-          </div>
-        </div>
+          <h2 className="text-xl font-semibold tracking-tight text-neutral-900">Get started</h2>
+          <p className="mt-1 text-sm text-neutral-500">
+            Set up your account in under a minute.
+          </p>
 
-        <div className="backdrop-blur-[6px] supports-[backdrop-filter]:bg-white/80 bg-white/95 px-6 pb-[max(24px,env(safe-area-inset-bottom))] pt-8">
-          <div className="mx-auto flex w-full max-w-[448px] flex-col gap-4">
-            <button
-              type="button"
-              onClick={() => {
-                startSession();
-                navigate("/auth/info");
-              }}
-              className="relative w-full rounded-[24px] py-4 text-center text-lg font-bold leading-7 text-white shadow-[0px_10px_15px_-3px_rgba(36,99,235,0.25),0px_4px_6px_-4px_rgba(36,99,235,0.25)] transition hover:brightness-95 active:brightness-90"
-              style={{ backgroundColor: BRAND }}
+          <div className="mt-6 space-y-3">
+            <Button
+              size="xl"
+              className="w-full"
+              onClick={() => { startSession(); navigate("/auth/info"); }}
             >
-              Get Started
-            </button>
-            <p className="text-center text-xs leading-4 text-[#64748b]">
-              Already have an account?{" "}
-              <button
-                type="button"
-                className="font-semibold text-[#2463eb] hover:underline"
-                onClick={() => navigate("/auth/login")}
-              >
-                Log in
-              </button>
-            </p>
+              Create account
+              <ArrowRight className="h-4 w-4" />
+            </Button>
+            <Button
+              variant="secondary"
+              size="xl"
+              className="w-full"
+              onClick={() => navigate("/auth/login")}
+            >
+              Sign in to existing account
+            </Button>
           </div>
+
+          <p className="mt-8 text-center text-xs text-neutral-400">
+            By continuing, you agree to our Terms of Service and Privacy Policy.
+          </p>
         </div>
       </div>
-    </AuthLayout>
+    </div>
   );
 }

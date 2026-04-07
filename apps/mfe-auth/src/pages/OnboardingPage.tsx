@@ -1,26 +1,27 @@
-import { useMemo, useState } from "react";
+import { useState } from "react";
 import { useNavigate, Navigate } from "react-router-dom";
 import { markOnboardingSeen, hasStartedSession, hasSeenInfoStep, markOnboardingStepDone } from "../lib/session";
+import { ArrowLeft, ArrowRight, Brain, MapPin, Syringe } from "lucide-react";
 import { AuthLayout } from "../components/AuthLayout";
-import onboardingAiImage from "../assets/images/onboarding-ai.jpg";
-import onboardingVetImage from "../assets/images/onboarding-vet.jpg";
-import onboardingVaccineImage from "../assets/images/onboarding-vaccine.jpg";
+import { Button } from "../components/ui/button";
+import { Progress } from "../components/ui/progress";
+import { cn } from "../lib/utils";
 
 const slides = [
   {
-    title: "AI Disease Prediction",
-    description: "Leverage advanced machine learning to detect potential health risks early with explainable confidence indicators.",
-    image: onboardingAiImage,
+    title: "AI Risk Prediction",
+    description: "Machine learning models analyze symptoms against a veterinary knowledge graph to surface potential health risks with explainable confidence scores.",
+    icon: Brain,
   },
   {
-    title: "Smart Vet Recommendation",
-    description: "Get location-aware recommendations for qualified nearby clinics based on your pet's condition and history.",
-    image: onboardingVetImage,
+    title: "Clinic Discovery",
+    description: "Location-aware recommendations connect you with qualified veterinary clinics based on your pet's condition, proximity, and availability.",
+    icon: MapPin,
   },
   {
-    title: "Vaccination & Health Tracking",
-    description: "Maintain a complete digital health timeline with reminders for boosters, checkups, and preventive care.",
-    image: onboardingVaccineImage,
+    title: "Health Timeline",
+    description: "A complete digital record of vaccinations, checkups, and preventive care with intelligent reminders for upcoming boosters and appointments.",
+    icon: Syringe,
   },
 ];
 
@@ -30,66 +31,70 @@ export function OnboardingPage() {
   if (!hasStartedSession()) return <Navigate to="/auth" replace />;
   if (!hasSeenInfoStep()) return <Navigate to="/auth/info" replace />;
 
-  const slide = useMemo(() => slides[step], [step]);
+  const slide = slides[step];
+  const isLast = step === slides.length - 1;
+  const progressValue = 33 + ((step + 1) / slides.length) * 33;
 
-  function finishOnboarding() {
+  function finish() {
     markOnboardingStepDone();
     markOnboardingSeen();
     navigate("/auth/role");
   }
 
-  function handleNext() {
-    if (step === slides.length - 1) {
-      finishOnboarding();
-      return;
-    }
-    setStep((current) => current + 1);
-  }
-
   return (
-    <AuthLayout title="PetHealth AI" subtitle="Designed for pet owners, clinics, and care teams.">
-      <div className="flex flex-1 flex-col">
-        <div className="mb-4 flex items-center justify-between">
-          <button
-            type="button"
-            onClick={() => setStep((current) => (current > 0 ? current - 1 : current))}
-            className={`text-4xl text-slate-700 ${step === 0 ? "invisible" : "visible"}`}
-          >
-            ←
-          </button>
-          <div className="text-4xl font-extrabold tracking-tight text-slate-900">PetHealth AI</div>
-          <button onClick={finishOnboarding} className="text-[18px] font-semibold text-slate-500 hover:text-slate-600">
-            {step === 1 ? "Help" : "Skip"}
-          </button>
+    <AuthLayout>
+      <div className="animate-slide-up">
+        <div className="mb-6 space-y-2">
+          <div className="flex items-center justify-between text-xs text-neutral-400">
+            <span>Step 2 of 3</span>
+            <button type="button" onClick={finish} className="font-medium text-neutral-600 hover:text-neutral-900 transition-colors">
+              Skip
+            </button>
+          </div>
+          <Progress value={progressValue} />
         </div>
 
-        <div className="flex flex-1 flex-col text-center">
-          <div className="overflow-hidden rounded-[28px] border border-slate-200 bg-slate-50 shadow-sm">
-            <img src={slide.image} alt={slide.title} className="h-72 w-full object-cover" />
+        {/* Slide content */}
+        <div className="min-h-[200px]">
+          <div className="mb-4 flex h-10 w-10 items-center justify-center rounded-lg bg-neutral-100">
+            <slide.icon className="h-5 w-5 text-neutral-600" />
           </div>
 
-          <h1 className="mt-6 text-5xl font-extrabold leading-tight tracking-tight text-slate-900">{slide.title}</h1>
-          <p className="mx-auto mt-4 max-w-xl text-[18px] leading-9 text-slate-600">{slide.description}</p>
-
-          <div className="mt-10 flex justify-center gap-3">
-            {slides.map((_, index) => (
-              <span
-                key={index}
-                className={`h-3 rounded-full transition ${index === step ? "w-12 bg-blue-600" : "w-3 bg-slate-300"}`}
-              />
-            ))}
-          </div>
+          <h1 className="text-xl font-semibold tracking-tight text-neutral-900">
+            {slide.title}
+          </h1>
+          <p className="mt-2 text-sm leading-relaxed text-neutral-500">
+            {slide.description}
+          </p>
         </div>
 
-        <button onClick={handleNext} className="mt-8 w-full rounded-[22px] bg-blue-600 py-4 text-lg font-semibold text-white shadow-[0_12px_28px_rgba(37,99,235,0.34)] transition hover:bg-blue-700">
-          {step === slides.length - 1 ? "Get Started" : "Next"}
-        </button>
+        {/* Dots */}
+        <div className="mt-6 flex gap-1.5">
+          {slides.map((_, i) => (
+            <button
+              key={i}
+              type="button"
+              onClick={() => setStep(i)}
+              className={cn(
+                "h-1.5 rounded-full transition-all duration-300",
+                i === step ? "w-6 bg-neutral-900" : "w-1.5 bg-neutral-200 hover:bg-neutral-300",
+              )}
+            />
+          ))}
+        </div>
 
-        {step !== slides.length - 1 && (
-          <button type="button" onClick={finishOnboarding} className="mt-3 text-center text-[18px] font-semibold text-slate-500">
-            Skip
-          </button>
-        )}
+        {/* Navigation */}
+        <div className="mt-8 flex gap-2">
+          {step > 0 && (
+            <Button variant="secondary" size="lg" onClick={() => setStep((s) => s - 1)} className="w-10 px-0">
+              <ArrowLeft className="h-4 w-4" />
+            </Button>
+          )}
+          <Button size="lg" className="flex-1" onClick={() => isLast ? finish() : setStep((s) => s + 1)}>
+            {isLast ? "Continue" : "Next"}
+            <ArrowRight className="h-4 w-4" />
+          </Button>
+        </div>
       </div>
     </AuthLayout>
   );

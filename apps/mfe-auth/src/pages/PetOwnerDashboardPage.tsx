@@ -1,112 +1,68 @@
 import { type ChangeEvent, useEffect, useMemo, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { getProfileNameForRole, logout, saveProfileName } from "../lib/session";
+import { toast } from "../lib/use-toast";
+import {
+  Home, PawPrint, Brain, MapPin, User, LogOut, Plus, Trash2, Save,
+  Send, AlertTriangle, Calendar, Clock, ChevronRight, X, Menu,
+} from "lucide-react";
+import { Button } from "../components/ui/button";
+import { Input } from "../components/ui/input";
+import { Label } from "../components/ui/label";
+import { Badge } from "../components/ui/badge";
+import { Alert } from "../components/ui/alert";
+import { Separator } from "../components/ui/separator";
+import { Avatar, AvatarImage, AvatarFallback } from "../components/ui/avatar";
+import { cn } from "../lib/utils";
 import petBuddyImage from "../assets/images/pet-buddy.jpg";
 import petLunaImage from "../assets/images/pet-luna.jpg";
 
+// ── Storage keys ──
 const CLINIC_DIRECTORY_KEY = "companion_ai_clinic_directory";
 const PET_OWNER_PETS_KEY = "companion_ai_pet_owner_pets";
 const PET_OWNER_PROFILE_KEY = "companion_ai_pet_owner_profile";
 const PET_OWNER_APPOINTMENTS_KEY = "companion_ai_pet_owner_appointments";
 const PET_OWNER_SURGEON_INQUIRIES_KEY = "companion_ai_pet_owner_surgeon_inquiries";
 
+// ── Types ──
 interface ClinicDirectoryRecord {
-  id: string;
-  name: string;
-  address: string;
-  phone: string;
-  specialization: string;
-  status: "active" | "inactive";
-  latitude?: number;
-  longitude?: number;
-  surgeons: Array<{
-    id: string;
-    name: string;
-    specialization: string;
-    availableSlots: string[];
-  }>;
+  id: string; name: string; address: string; phone: string; specialization: string;
+  status: "active" | "inactive"; latitude?: number; longitude?: number;
+  surgeons: Array<{ id: string; name: string; specialization: string; availableSlots: string[] }>;
 }
-
 interface PetRecord {
-  id: string;
-  name: string;
-  species: string;
-  breed: string;
-  age: string;
-  weightKg: string;
-  emoji: string;
-  photoDataUrl?: string;
+  id: string; name: string; species: string; breed: string; age: string;
+  weightKg: string; emoji: string; photoDataUrl?: string;
 }
-
-interface OwnerProfile {
-  displayName: string;
-  email: string;
-  phone: string;
-  address: string;
-  photoDataUrl?: string;
-}
-
+interface OwnerProfile { displayName: string; email: string; phone: string; address: string; photoDataUrl?: string; }
 interface AppointmentRecord {
-  id: string;
-  clinicId: string;
-  clinicName: string;
-  surgeonId: string;
-  surgeonName: string;
-  slot: string;
-  petId: string;
-  petName: string;
-  ownerName: string;
-  ownerPhone?: string;
-  status: "pending" | "confirmed" | "cancelled";
-  bookedAt: string;
+  id: string; clinicId: string; clinicName: string; surgeonId: string; surgeonName: string;
+  slot: string; petId: string; petName: string; ownerName: string; ownerPhone?: string;
+  status: "pending" | "confirmed" | "cancelled"; bookedAt: string;
 }
-
 interface SurgeonInquiryRecord {
-  id: string;
-  clinicId: string;
-  clinicName: string;
-  surgeonId: string;
-  surgeonName: string;
-  petId: string;
-  petName: string;
-  message: string;
-  status: "open" | "replied";
-  createdAt: string;
+  id: string; clinicId: string; clinicName: string; surgeonId: string; surgeonName: string;
+  petId: string; petName: string; message: string; status: "open" | "replied"; createdAt: string;
 }
-
-interface ChatMessage {
-  id: string;
-  sender: "owner" | "assistant";
-  text: string;
-}
-
-type DashboardTab = "home" | "pets" | "ai" | "clinics" | "profile";
+interface ChatMessage { id: string; sender: "owner" | "assistant"; text: string; }
+type Tab = "home" | "pets" | "ai" | "clinics" | "profile";
 
 const defaultPets: PetRecord[] = [
-  {
-    id: "pet-1",
-    name: "Buddy",
-    species: "Dog",
-    breed: "Golden Retriever",
-    age: "2",
-    weightKg: "30",
-    emoji: "🐕",
-    photoDataUrl: petBuddyImage,
-  },
-  {
-    id: "pet-2",
-    name: "Luna",
-    species: "Cat",
-    breed: "Siamese",
-    age: "4",
-    weightKg: "5",
-    emoji: "🐈",
-    photoDataUrl: petLunaImage,
-  },
+  { id: "pet-1", name: "Buddy", species: "Dog", breed: "Golden Retriever", age: "2", weightKg: "30", emoji: "🐕", photoDataUrl: petBuddyImage },
+  { id: "pet-2", name: "Luna", species: "Cat", breed: "Siamese", age: "4", weightKg: "5", emoji: "🐈", photoDataUrl: petLunaImage },
 ];
 
-const defaultMessages: ChatMessage[] = [
-  { id: "msg-1", sender: "assistant", text: "Hi! I am your PetCare AI Assistant. Tell me your pet's symptoms for quick guidance." },
+function loadJson<T>(key: string, fallback: T): T {
+  try { const raw = localStorage.getItem(key); return raw ? JSON.parse(raw) as T : fallback; } catch { return fallback; }
+}
+
+// ── Nav config ──
+const navItems: Array<{ id: Tab; label: string; icon: typeof Home }> = [
+  { id: "home", label: "Overview", icon: Home },
+  { id: "pets", label: "Pets", icon: PawPrint },
+  { id: "ai", label: "AI Chat", icon: Brain },
+  { id: "clinics", label: "Clinics", icon: MapPin },
+  { id: "profile", label: "Profile", icon: User },
 ];
 
 export function PetOwnerDashboardPage() {
@@ -114,892 +70,549 @@ export function PetOwnerDashboardPage() {
   const storedName = getProfileNameForRole("pet-owner", "Pet Owner");
   const firstName = storedName.trim().split(/\s+/)[0] || "Pet Owner";
 
-  const [activeTab, setActiveTab] = useState<DashboardTab>("home");
-  const [pets, setPets] = useState<PetRecord[]>(() => {
-    const raw = localStorage.getItem(PET_OWNER_PETS_KEY);
-    if (!raw) return defaultPets;
-    try {
-      const parsed = JSON.parse(raw) as PetRecord[];
-      return Array.isArray(parsed) && parsed.length ? parsed : defaultPets;
-    } catch {
-      return defaultPets;
-    }
-  });
-
-  const [newPet, setNewPet] = useState({
-    name: "",
-    species: "Dog",
-    breed: "",
-    age: "",
-    weightKg: "",
-    photoDataUrl: "",
-  });
-
-  const [profile, setProfile] = useState<OwnerProfile>(() => {
-    const raw = localStorage.getItem(PET_OWNER_PROFILE_KEY);
-    if (raw) {
-      try {
-        return JSON.parse(raw) as OwnerProfile;
-      } catch {
-        // ignore parse error and use fallback
-      }
-    }
-    return {
-      displayName: storedName,
-      email: "",
-      phone: "",
-      address: "",
-    };
-  });
-
-  const [messages, setMessages] = useState<ChatMessage[]>(defaultMessages);
+  const [activeTab, setActiveTab] = useState<Tab>("home");
+  const [mobileNavOpen, setMobileNavOpen] = useState(false);
+  const [pets, setPets] = useState<PetRecord[]>(() => { const p = loadJson<PetRecord[]>(PET_OWNER_PETS_KEY, []); return p.length ? p : defaultPets; });
+  const [newPet, setNewPet] = useState({ name: "", species: "Dog", breed: "", age: "", weightKg: "", photoDataUrl: "" });
+  const [profile, setProfile] = useState<OwnerProfile>(() => loadJson(PET_OWNER_PROFILE_KEY, { displayName: storedName, email: "", phone: "", address: "" }));
+  const [messages, setMessages] = useState<ChatMessage[]>([{ id: "msg-1", sender: "assistant", text: "Hi! I'm your PetCare AI assistant. Describe your pet's symptoms for guidance." }]);
   const [chatInput, setChatInput] = useState("");
-  const [appointments, setAppointments] = useState<AppointmentRecord[]>(() => {
-    const raw = localStorage.getItem(PET_OWNER_APPOINTMENTS_KEY);
-    if (!raw) return [];
-    try {
-      const parsed = JSON.parse(raw) as AppointmentRecord[];
-      return Array.isArray(parsed) ? parsed : [];
-    } catch {
-      return [];
-    }
-  });
+  const [appointments, setAppointments] = useState<AppointmentRecord[]>(() => loadJson(PET_OWNER_APPOINTMENTS_KEY, []));
   const [bookingPetByClinic, setBookingPetByClinic] = useState<Record<string, string>>({});
   const [rescheduleSlotByAppointment, setRescheduleSlotByAppointment] = useState<Record<string, string>>({});
   const [inquiryBySurgeon, setInquiryBySurgeon] = useState<Record<string, string>>({});
-  const [surgeonInquiries, setSurgeonInquiries] = useState<SurgeonInquiryRecord[]>(() => {
-    const raw = localStorage.getItem(PET_OWNER_SURGEON_INQUIRIES_KEY);
-    if (!raw) return [];
-    try {
-      const parsed = JSON.parse(raw) as SurgeonInquiryRecord[];
-      return Array.isArray(parsed) ? parsed : [];
-    } catch {
-      return [];
-    }
-  });
+  const [surgeonInquiries, setSurgeonInquiries] = useState<SurgeonInquiryRecord[]>(() => loadJson(PET_OWNER_SURGEON_INQUIRIES_KEY, []));
   const [userLocation, setUserLocation] = useState<{ latitude: number; longitude: number } | null>(null);
-  const [locationError, setLocationError] = useState<string>("");
+  const [locationError, setLocationError] = useState("");
 
   const clinics = useMemo(() => {
-    const raw = localStorage.getItem(CLINIC_DIRECTORY_KEY);
-    if (!raw) return [] as ClinicDirectoryRecord[];
-
-    try {
-      const parsed = JSON.parse(raw) as ClinicDirectoryRecord[];
-      if (!Array.isArray(parsed)) return [];
-      return parsed.filter((clinic) => clinic.status === "active");
-    } catch {
-      return [];
-    }
+    const parsed = loadJson<ClinicDirectoryRecord[]>(CLINIC_DIRECTORY_KEY, []);
+    return parsed.filter((c) => c.status === "active");
   }, [activeTab, appointments.length]);
 
-  useEffect(() => {
-    localStorage.setItem(PET_OWNER_APPOINTMENTS_KEY, JSON.stringify(appointments));
-  }, [appointments]);
+  useEffect(() => { localStorage.setItem(PET_OWNER_APPOINTMENTS_KEY, JSON.stringify(appointments)); }, [appointments]);
+  useEffect(() => { localStorage.setItem(PET_OWNER_SURGEON_INQUIRIES_KEY, JSON.stringify(surgeonInquiries)); }, [surgeonInquiries]);
 
   useEffect(() => {
-    localStorage.setItem(PET_OWNER_SURGEON_INQUIRIES_KEY, JSON.stringify(surgeonInquiries));
-  }, [surgeonInquiries]);
-
-  useEffect(() => {
-    if (!navigator.geolocation) {
-      setLocationError("Geolocation is not supported by this browser.");
-      return;
-    }
-
+    if (!navigator.geolocation) { setLocationError("Geolocation not supported."); return; }
     navigator.geolocation.getCurrentPosition(
-      (position) => {
-        setUserLocation({ latitude: position.coords.latitude, longitude: position.coords.longitude });
-        setLocationError("");
-      },
-      () => {
-        setLocationError("Location permission denied. Showing clinics without distance ranking.");
-      },
+      (pos) => { setUserLocation({ latitude: pos.coords.latitude, longitude: pos.coords.longitude }); setLocationError(""); },
+      () => setLocationError("Location permission denied."),
       { enableHighAccuracy: true, timeout: 10000 },
     );
   }, []);
 
-  function toRadians(value: number): number {
-    return (value * Math.PI) / 180;
-  }
-
   function distanceKm(aLat: number, aLon: number, bLat: number, bLon: number): number {
-    const earthKm = 6371;
-    const dLat = toRadians(bLat - aLat);
-    const dLon = toRadians(bLon - aLon);
-    const lat1 = toRadians(aLat);
-    const lat2 = toRadians(bLat);
-
-    const h =
-      Math.sin(dLat / 2) * Math.sin(dLat / 2)
-      + Math.cos(lat1) * Math.cos(lat2) * Math.sin(dLon / 2) * Math.sin(dLon / 2);
-    const c = 2 * Math.atan2(Math.sqrt(h), Math.sqrt(1 - h));
-    return earthKm * c;
+    const R = 6371, toRad = (v: number) => (v * Math.PI) / 180;
+    const dLat = toRad(bLat - aLat), dLon = toRad(bLon - aLon);
+    const h = Math.sin(dLat / 2) ** 2 + Math.cos(toRad(aLat)) * Math.cos(toRad(bLat)) * Math.sin(dLon / 2) ** 2;
+    return R * 2 * Math.atan2(Math.sqrt(h), Math.sqrt(1 - h));
   }
 
   const nearbyClinics = useMemo(() => {
     if (!userLocation) return clinics;
-
-    return [...clinics]
-      .map((clinic) => {
-        if (typeof clinic.latitude !== "number" || typeof clinic.longitude !== "number") {
-          return { clinic, distance: Number.POSITIVE_INFINITY };
-        }
-
-        return {
-          clinic,
-          distance: distanceKm(userLocation.latitude, userLocation.longitude, clinic.latitude, clinic.longitude),
-        };
-      })
-      .sort((a, b) => a.distance - b.distance)
-      .map((entry) => entry.clinic);
+    return [...clinics].sort((a, b) => {
+      const dA = typeof a.latitude === "number" && typeof a.longitude === "number" ? distanceKm(userLocation.latitude, userLocation.longitude, a.latitude, a.longitude) : Infinity;
+      const dB = typeof b.latitude === "number" && typeof b.longitude === "number" ? distanceKm(userLocation.latitude, userLocation.longitude, b.latitude, b.longitude) : Infinity;
+      return dA - dB;
+    });
   }, [clinics, userLocation]);
 
   const predictions = [
-    { id: "1", title: "Hip Dysplasia Risk", pet: "Buddy", age: "2 hours ago", risk: "low risk", riskClass: "bg-emerald-100 text-emerald-700" },
-    { id: "2", title: "Glaucoma Check", pet: "Luna", age: "yesterday", risk: "moderate", riskClass: "bg-amber-100 text-amber-700" },
-    { id: "3", title: "Dietary Sensitivity", pet: "Buddy", age: "3 days ago", risk: "high risk", riskClass: "bg-rose-100 text-rose-700" },
+    { id: "1", title: "Hip Dysplasia Risk", pet: "Buddy", age: "2h ago", risk: "low", variant: "success" as const },
+    { id: "2", title: "Glaucoma Check", pet: "Luna", age: "1d ago", risk: "moderate", variant: "warning" as const },
+    { id: "3", title: "Dietary Sensitivity", pet: "Buddy", age: "3d ago", risk: "high", variant: "danger" as const },
   ];
 
-  function persistPets(nextPets: PetRecord[]) {
-    setPets(nextPets);
-    localStorage.setItem(PET_OWNER_PETS_KEY, JSON.stringify(nextPets));
-  }
+  function persistPets(next: PetRecord[]) { setPets(next); localStorage.setItem(PET_OWNER_PETS_KEY, JSON.stringify(next)); }
 
   function handleAddPet() {
     if (!newPet.name.trim() || !newPet.breed.trim() || !newPet.age.trim() || !newPet.weightKg.trim()) {
-      alert("Please fill pet name, breed, age, and weight.");
-      return;
+      toast({ title: "Missing fields", description: "Fill name, breed, age, and weight.", variant: "error" }); return;
     }
-
-    const emoji = newPet.species.toLowerCase() === "cat" ? "🐈" : "🐕";
-    const pet: PetRecord = {
-      id: `pet-${Date.now()}`,
-      name: newPet.name.trim(),
-      species: newPet.species,
-      breed: newPet.breed.trim(),
-      age: newPet.age.trim(),
-      weightKg: newPet.weightKg.trim(),
-      emoji,
-      photoDataUrl: newPet.photoDataUrl || undefined,
-    };
-
+    const pet: PetRecord = { id: `pet-${Date.now()}`, ...newPet, name: newPet.name.trim(), breed: newPet.breed.trim(), age: newPet.age.trim(), weightKg: newPet.weightKg.trim(), emoji: newPet.species === "Cat" ? "🐈" : "🐕", photoDataUrl: newPet.photoDataUrl || undefined };
     persistPets([pet, ...pets]);
     setNewPet({ name: "", species: "Dog", breed: "", age: "", weightKg: "", photoDataUrl: "" });
+    toast({ title: "Pet added", variant: "success" });
   }
 
-  function handleNewPetPhotoUpload(event: ChangeEvent<HTMLInputElement>) {
-    const file = event.target.files?.[0];
-    if (!file) return;
-
-    const reader = new FileReader();
-    reader.onload = () => {
-      const photoDataUrl = typeof reader.result === "string" ? reader.result : "";
-      setNewPet((prev) => ({ ...prev, photoDataUrl }));
+  function handlePhotoUpload(setter: (url: string) => void) {
+    return (e: ChangeEvent<HTMLInputElement>) => {
+      const file = e.target.files?.[0]; if (!file) return;
+      const reader = new FileReader();
+      reader.onload = () => { if (typeof reader.result === "string") setter(reader.result); };
+      reader.readAsDataURL(file);
     };
-    reader.readAsDataURL(file);
   }
 
-  function handleDeletePet(id: string) {
-    const confirmed = window.confirm("Delete this pet profile?");
-    if (!confirmed) return;
-    persistPets(pets.filter((pet) => pet.id !== id));
-  }
+  function handleDeletePet(id: string) { persistPets(pets.filter((p) => p.id !== id)); toast({ title: "Pet removed" }); }
 
   function handleSaveProfile() {
-    if (!profile.displayName.trim()) {
-      alert("Name cannot be empty.");
-      return;
-    }
-
-    const updated = {
-      ...profile,
-      displayName: profile.displayName.trim(),
-    };
-
-    setProfile(updated);
-    saveProfileName(updated.displayName, "pet-owner");
+    if (!profile.displayName.trim()) { toast({ title: "Name required", variant: "error" }); return; }
+    const updated = { ...profile, displayName: profile.displayName.trim() };
+    setProfile(updated); saveProfileName(updated.displayName, "pet-owner");
     localStorage.setItem(PET_OWNER_PROFILE_KEY, JSON.stringify(updated));
-    alert("Profile updated successfully.");
+    toast({ title: "Profile saved", variant: "success" });
   }
 
-  function handleProfilePhotoUpload(event: ChangeEvent<HTMLInputElement>) {
-    const file = event.target.files?.[0];
-    if (!file) return;
+  function handleLogout() { logout(); navigate("/auth/login", { replace: true }); }
 
-    const reader = new FileReader();
-    reader.onload = () => {
-      const photoDataUrl = typeof reader.result === "string" ? reader.result : "";
-      setProfile((prev) => {
-        const nextProfile = { ...prev, photoDataUrl };
-        localStorage.setItem(PET_OWNER_PROFILE_KEY, JSON.stringify(nextProfile));
-        return nextProfile;
-      });
-    };
-    reader.readAsDataURL(file);
+  function isSlotBooked(clinicId: string, surgeonId: string, slot: string) {
+    return appointments.some((a) => a.status !== "cancelled" && a.clinicId === clinicId && a.surgeonId === surgeonId && a.slot === slot);
   }
 
-  function handleDeleteProfile() {
-    const confirmed = window.confirm("Delete your profile data and logout?");
-    if (!confirmed) return;
-
-    localStorage.removeItem(PET_OWNER_PROFILE_KEY);
-    localStorage.removeItem(PET_OWNER_PETS_KEY);
-    logout();
-    navigate("/auth/login", { replace: true });
+  function handleBookAppointment(clinic: ClinicDirectoryRecord, surgeon: ClinicDirectoryRecord["surgeons"][number], slot: string) {
+    const petId = bookingPetByClinic[clinic.id] || pets[0]?.id;
+    const pet = pets.find((p) => p.id === petId);
+    if (!pet) { toast({ title: "Add a pet first", variant: "error" }); return; }
+    if (isSlotBooked(clinic.id, surgeon.id, slot)) { toast({ title: "Slot taken", variant: "error" }); return; }
+    setAppointments((prev) => [{ id: `appt-${Date.now()}`, clinicId: clinic.id, clinicName: clinic.name, surgeonId: surgeon.id, surgeonName: surgeon.name, slot, petId: pet.id, petName: pet.name, ownerName: profile.displayName.trim() || "Pet Owner", ownerPhone: profile.phone.trim() || undefined, status: "pending", bookedAt: new Date().toISOString() }, ...prev]);
+    toast({ title: "Appointment booked", description: `${surgeon.name} at ${slot}`, variant: "success" });
   }
 
-  function isSlotBooked(clinicId: string, surgeonId: string, slot: string): boolean {
-    return appointments.some(
-      (appt) =>
-        appt.status !== "cancelled"
-        && appt.clinicId === clinicId
-        && appt.surgeonId === surgeonId
-        && appt.slot === slot,
-    );
+  function handleCancelAppointment(id: string) {
+    setAppointments((prev) => prev.map((a) => a.id === id ? { ...a, status: "cancelled" } : a));
+    toast({ title: "Appointment cancelled" });
   }
 
-  function handleBookAppointment(
-    clinic: ClinicDirectoryRecord,
-    surgeon: ClinicDirectoryRecord["surgeons"][number],
-    slot: string,
-  ) {
-    const selectedPetId = bookingPetByClinic[clinic.id] || pets[0]?.id;
-    const selectedPet = pets.find((pet) => pet.id === selectedPetId);
-
-    if (!selectedPet) {
-      alert("Please add a pet profile first to book an appointment.");
-      return;
+  function handleRescheduleAppointment(appt: AppointmentRecord) {
+    const slot = rescheduleSlotByAppointment[appt.id]; if (!slot) return;
+    if (appointments.some((a) => a.id !== appt.id && a.status !== "cancelled" && a.clinicId === appt.clinicId && a.surgeonId === appt.surgeonId && a.slot === slot)) {
+      toast({ title: "Slot taken", variant: "error" }); return;
     }
-
-    if (isSlotBooked(clinic.id, surgeon.id, slot)) {
-      alert("This slot is already booked.");
-      return;
-    }
-
-    const appointment: AppointmentRecord = {
-      id: `appt-${Date.now()}`,
-      clinicId: clinic.id,
-      clinicName: clinic.name,
-      surgeonId: surgeon.id,
-      surgeonName: surgeon.name,
-      slot,
-      petId: selectedPet.id,
-      petName: selectedPet.name,
-      ownerName: profile.displayName.trim() || "Pet Owner",
-      ownerPhone: profile.phone.trim() || undefined,
-      status: "pending",
-      bookedAt: new Date().toISOString(),
-    };
-
-    setAppointments((prev) => [appointment, ...prev]);
-    alert(`Appointment booked with ${surgeon.name} at ${slot}.`);
+    setAppointments((prev) => prev.map((a) => a.id === appt.id ? { ...a, slot, status: "pending", bookedAt: new Date().toISOString() } : a));
+    toast({ title: "Rescheduled", variant: "success" });
   }
 
-  function handleCancelAppointment(appointmentId: string) {
-    const confirmed = window.confirm("Cancel this appointment?");
-    if (!confirmed) return;
-
-    setAppointments((prev) =>
-      prev.map((appointment) =>
-        appointment.id === appointmentId ? { ...appointment, status: "cancelled" } : appointment,
-      ),
-    );
-  }
-
-  function handleRescheduleAppointment(appointment: AppointmentRecord) {
-    const selectedSlot = rescheduleSlotByAppointment[appointment.id];
-    if (!selectedSlot) {
-      alert("Please select a new time slot.");
-      return;
-    }
-
-    const alreadyBooked = appointments.some(
-      (appt) =>
-        appt.id !== appointment.id
-        && appt.status !== "cancelled"
-        && appt.clinicId === appointment.clinicId
-        && appt.surgeonId === appointment.surgeonId
-        && appt.slot === selectedSlot,
-    );
-
-    if (alreadyBooked) {
-      alert("Selected slot is already booked.");
-      return;
-    }
-
-    setAppointments((prev) =>
-      prev.map((appt) =>
-        appt.id === appointment.id
-          ? { ...appt, slot: selectedSlot, status: "pending", bookedAt: new Date().toISOString() }
-          : appt,
-      ),
-    );
-    alert("Appointment rescheduled. Waiting for surgeon confirmation.");
-  }
-
-  function getSlotsForAppointment(appointment: AppointmentRecord): string[] {
-    const clinic = clinics.find((entry) => entry.id === appointment.clinicId);
-    const surgeon = clinic?.surgeons.find((entry) => entry.id === appointment.surgeonId);
-    return surgeon?.availableSlots ?? [];
-  }
-
-  function appointmentStatusClass(status: AppointmentRecord["status"]): string {
-    if (status === "confirmed") return "bg-emerald-100 text-emerald-700";
-    if (status === "cancelled") return "bg-rose-100 text-rose-700";
-    return "bg-amber-100 text-amber-700";
-  }
-
-  function handleSendSurgeonInquiry(
-    clinic: ClinicDirectoryRecord,
-    surgeon: ClinicDirectoryRecord["surgeons"][number],
-  ) {
-    const key = `${clinic.id}_${surgeon.id}`;
-    const message = inquiryBySurgeon[key]?.trim();
-    if (!message) {
-      alert("Please write your inquiry before sending.");
-      return;
-    }
-
-    const selectedPetId = bookingPetByClinic[clinic.id] || pets[0]?.id;
-    const selectedPet = pets.find((pet) => pet.id === selectedPetId);
-    if (!selectedPet) {
-      alert("Please add a pet first.");
-      return;
-    }
-
-    const inquiry: SurgeonInquiryRecord = {
-      id: `inq-${Date.now()}`,
-      clinicId: clinic.id,
-      clinicName: clinic.name,
-      surgeonId: surgeon.id,
-      surgeonName: surgeon.name,
-      petId: selectedPet.id,
-      petName: selectedPet.name,
-      message,
-      status: "open",
-      createdAt: new Date().toISOString(),
-    };
-
-    setSurgeonInquiries((prev) => [inquiry, ...prev]);
+  function handleSendInquiry(clinic: ClinicDirectoryRecord, surgeon: ClinicDirectoryRecord["surgeons"][number]) {
+    const key = `${clinic.id}_${surgeon.id}`, msg = inquiryBySurgeon[key]?.trim();
+    if (!msg) return;
+    const pet = pets.find((p) => p.id === (bookingPetByClinic[clinic.id] || pets[0]?.id));
+    if (!pet) { toast({ title: "Add a pet first", variant: "error" }); return; }
+    setSurgeonInquiries((prev) => [{ id: `inq-${Date.now()}`, clinicId: clinic.id, clinicName: clinic.name, surgeonId: surgeon.id, surgeonName: surgeon.name, petId: pet.id, petName: pet.name, message: msg, status: "open", createdAt: new Date().toISOString() }, ...prev]);
     setInquiryBySurgeon((prev) => ({ ...prev, [key]: "" }));
-    alert(`Inquiry sent to ${surgeon.name}.`);
+    toast({ title: "Inquiry sent", variant: "success" });
   }
 
-  function buildAssistantReply(prompt: string): string {
-    const text = prompt.toLowerCase();
-    if (text.includes("vomit") || text.includes("vomiting")) {
-      return "If vomiting happens more than once in 24 hours, keep your pet hydrated and book a vet visit soon. If there is blood, seek urgent care.";
-    }
-    if (text.includes("not eating") || text.includes("appetite")) {
-      return "Loss of appetite can be early warning. Track duration, water intake, and activity. If it persists more than a day, consult a vet.";
-    }
-    if (text.includes("vaccine") || text.includes("vaccination")) {
-      return "Check upcoming vaccine reminders and follow clinic schedules. I can help you prepare a vaccination checklist.";
-    }
-    return "Thanks. Based on your note, monitor symptoms for 12-24 hours and consult an available clinic if symptoms worsen or continue.";
+  function buildReply(prompt: string): string {
+    const t = prompt.toLowerCase();
+    if (t.includes("vomit")) return "If vomiting persists >24h, keep hydrated and book a vet visit. Seek urgent care if blood is present.";
+    if (t.includes("not eating") || t.includes("appetite")) return "Track duration, water intake, and activity. Consult a vet if it persists more than a day.";
+    if (t.includes("vaccine")) return "Check your vaccination timeline. I can help prepare a checklist for upcoming boosters.";
+    return "Monitor symptoms for 12-24 hours. Consult an available clinic if they worsen or persist.";
   }
 
   function handleSendMessage() {
-    const text = chatInput.trim();
-    if (!text) return;
-
-    const ownerMessage: ChatMessage = { id: `msg-${Date.now()}`, sender: "owner", text };
-    const reply: ChatMessage = {
-      id: `msg-${Date.now() + 1}`,
-      sender: "assistant",
-      text: buildAssistantReply(text),
-    };
-
-    setMessages((prev) => [...prev, ownerMessage, reply]);
+    const text = chatInput.trim(); if (!text) return;
+    setMessages((prev) => [...prev, { id: `msg-${Date.now()}`, sender: "owner", text }, { id: `msg-${Date.now() + 1}`, sender: "assistant", text: buildReply(text) }]);
     setChatInput("");
   }
 
-  const navItems: Array<{ id: DashboardTab; label: string; icon: string }> = [
-    { id: "home", label: "Home", icon: "🏠" },
-    { id: "pets", label: "My Pets", icon: "🐾" },
-    { id: "ai", label: "AI Assist", icon: "🧠" },
-    { id: "clinics", label: "Clinics", icon: "📍" },
-    { id: "profile", label: "Profile", icon: "👤" },
-  ];
-
+  // ── Render ──
   return (
-    <div className="min-h-dvh bg-slate-100">
-      {activeTab === "home" && (
-        <section className="border-b border-slate-200 bg-white px-5 pb-5 pt-6">
-          <div className="flex items-start justify-between text-slate-900">
-            <div>
-              <p className="text-base leading-6 text-slate-500">Welcome back,</p>
-              <h1 className="mt-1 text-3xl font-semibold leading-tight">{firstName}</h1>
-            </div>
-            <div className="flex items-center gap-2">
-              <button type="button" className="h-12 w-12 rounded-full border border-slate-200 bg-white text-xl shadow-sm" aria-label="Notifications">🔔</button>
-              {profile.photoDataUrl ? (
-                <img src={profile.photoDataUrl} alt="Profile" className="h-12 w-12 rounded-full border-2 border-blue-200 object-cover" />
-              ) : (
-                <div className="flex h-12 w-12 items-center justify-center rounded-full border-2 border-blue-200 bg-blue-50 text-lg">
-                  👤
-                </div>
-              )}
-            </div>
+    <div className="flex h-screen w-full overflow-hidden bg-neutral-50">
+      {/* ── Desktop sidebar ── */}
+      <aside className="hidden w-56 shrink-0 flex-col border-r border-neutral-200 bg-white lg:flex">
+        <div className="flex h-14 items-center gap-2 border-b border-neutral-200 px-4">
+          <div className="flex h-7 w-7 items-center justify-center rounded-md bg-neutral-900">
+            <svg viewBox="0 0 24 24" fill="white" className="h-3.5 w-3.5">
+              <ellipse cx="12" cy="17.5" rx="3.5" ry="3" /><circle cx="8.2" cy="11.2" r="1.8" /><circle cx="15.8" cy="11.2" r="1.8" /><circle cx="6.5" cy="14.8" r="1.6" /><circle cx="17.5" cy="14.8" r="1.6" />
+            </svg>
           </div>
-        </section>
-      )}
+          <span className="text-sm font-semibold text-neutral-900">PetCare AI</span>
+        </div>
 
-      <section className="px-5 pb-28 pt-4">
-        {activeTab === "home" && (
-          <div className="space-y-6">
-            <button
-              type="button"
-              onClick={() => setActiveTab("pets")}
-              className="w-full rounded-[2rem] bg-blue-600 px-6 py-5 text-center text-3xl font-semibold text-white shadow-[0_16px_36px_rgba(37,99,235,0.35)] transition hover:bg-blue-700"
-            >
-              + Add New Pet
-            </button>
-
-            <div className="rounded-[2rem] border border-amber-200 bg-amber-50 p-5 text-amber-900 shadow-sm">
-              <div className="flex items-start gap-3">
-                <div className="mt-1 flex h-12 w-12 items-center justify-center rounded-full bg-amber-500 text-2xl text-white">💉</div>
-                <div>
-                  <h2 className="text-3xl font-semibold">Vaccinations Due</h2>
-                  <p className="mt-2 text-lg leading-8 text-amber-800">Buddy&apos;s Rabies booster is due in 3 days. Schedule a visit soon.</p>
-                  <button className="mt-3 text-lg font-semibold underline underline-offset-4" type="button" onClick={() => setActiveTab("clinics")}>Book Appointment</button>
-                </div>
-              </div>
-            </div>
-
-            <div>
-              <div className="mb-3 flex items-center justify-between">
-                <h2 className="text-3xl font-semibold text-slate-900">Your Pets</h2>
-                <button type="button" onClick={() => setActiveTab("pets")} className="text-xl font-semibold text-blue-600">View All</button>
-              </div>
-              <div className="grid gap-3 sm:grid-cols-2">
-                {pets.slice(0, 2).map((pet) => (
-                  <article key={pet.id} className="rounded-3xl border border-slate-200 bg-white p-3 shadow-sm">
-                    <div className="overflow-hidden rounded-2xl bg-slate-100">
-                      {pet.photoDataUrl ? (
-                        <img src={pet.photoDataUrl} alt={pet.name} className="h-56 w-full object-cover" />
-                      ) : (
-                        <div className="flex h-56 items-center justify-center text-7xl">{pet.emoji}</div>
-                      )}
-                    </div>
-                    <h3 className="mt-3 text-4xl font-semibold text-slate-900">{pet.name}</h3>
-                    <p className="text-xl text-slate-500">{pet.breed} • {pet.age} years</p>
-                  </article>
-                ))}
-              </div>
-            </div>
-
-            <div>
-              <div className="mb-3 flex items-center justify-between">
-                <h2 className="text-3xl font-semibold text-slate-900">Recent Predictions</h2>
-                <button type="button" className="text-xl font-semibold text-blue-600">History</button>
-              </div>
-              <div className="space-y-3">
-                {predictions.map((item) => (
-                  <article key={item.id} className="rounded-3xl border border-slate-200 bg-white p-4 shadow-sm">
-                    <div className="flex items-center justify-between gap-4">
-                      <div className="flex items-center gap-3">
-                        <div className="flex h-12 w-12 items-center justify-center rounded-full bg-blue-50 text-2xl">🧬</div>
-                        <div>
-                          <h3 className="text-2xl font-semibold text-slate-900">{item.title}</h3>
-                          <p className="text-lg text-slate-500">{item.pet} • {item.age}</p>
-                        </div>
-                      </div>
-                      <span className={`rounded-full px-3 py-1 text-sm font-semibold uppercase ${item.riskClass}`}>{item.risk}</span>
-                    </div>
-                  </article>
-                ))}
-              </div>
-            </div>
-          </div>
-        )}
-
-        {activeTab === "pets" && (
-          <div className="space-y-4">
-            <h2 className="text-2xl font-semibold text-slate-900">My Pets</h2>
-
-            <article className="rounded-2xl border border-slate-200 bg-white p-4 shadow-sm">
-              <h3 className="text-lg font-semibold text-slate-900">Add New Pet</h3>
-              <div className="mt-3 flex items-center gap-3">
-                {newPet.photoDataUrl ? (
-                  <img src={newPet.photoDataUrl} alt="Pet preview" className="h-14 w-14 rounded-full border border-slate-200 object-cover" />
-                ) : (
-                  <div className="flex h-14 w-14 items-center justify-center rounded-full border border-slate-200 bg-slate-50 text-xl">
-                    {newPet.species === "Cat" ? "🐈" : "🐕"}
-                  </div>
-                )}
-                <div>
-                  <label className="text-xs font-semibold text-slate-700">Pet Photo</label>
-                  <input type="file" accept="image/*" onChange={handleNewPetPhotoUpload} className="mt-1 block text-xs text-slate-600" />
-                </div>
-              </div>
-              <div className="mt-3 grid gap-2 sm:grid-cols-2">
-                <input
-                  value={newPet.name}
-                  onChange={(e) => setNewPet((prev) => ({ ...prev, name: e.target.value }))}
-                  placeholder="Pet Name"
-                  className="rounded-lg border border-slate-300 px-3 py-2 text-sm outline-none focus:border-green-500"
-                />
-                <select
-                  value={newPet.species}
-                  onChange={(e) => setNewPet((prev) => ({ ...prev, species: e.target.value }))}
-                  className="rounded-lg border border-slate-300 px-3 py-2 text-sm outline-none focus:border-green-500"
-                >
-                  <option>Dog</option>
-                  <option>Cat</option>
-                </select>
-                <input
-                  value={newPet.breed}
-                  onChange={(e) => setNewPet((prev) => ({ ...prev, breed: e.target.value }))}
-                  placeholder="Breed"
-                  className="rounded-lg border border-slate-300 px-3 py-2 text-sm outline-none focus:border-green-500"
-                />
-                <input
-                  value={newPet.age}
-                  onChange={(e) => setNewPet((prev) => ({ ...prev, age: e.target.value }))}
-                  placeholder="Age (years)"
-                  className="rounded-lg border border-slate-300 px-3 py-2 text-sm outline-none focus:border-green-500"
-                />
-                <input
-                  value={newPet.weightKg}
-                  onChange={(e) => setNewPet((prev) => ({ ...prev, weightKg: e.target.value }))}
-                  placeholder="Weight (kg)"
-                  className="rounded-lg border border-slate-300 px-3 py-2 text-sm outline-none focus:border-green-500"
-                />
-              </div>
-              <button type="button" onClick={handleAddPet} className="mt-3 rounded-lg bg-green-600 px-4 py-2 text-sm font-semibold text-white hover:bg-green-500">
-                Add Pet
-              </button>
-            </article>
-
-            <div className="space-y-3">
-              {pets.map((pet) => (
-                <article key={pet.id} className="flex items-center justify-between rounded-2xl border border-slate-200 bg-white p-4 shadow-sm">
-                  <div className="flex items-center gap-3">
-                    {pet.photoDataUrl ? (
-                      <img src={pet.photoDataUrl} alt={pet.name} className="h-14 w-14 rounded-full border border-slate-200 object-cover" />
-                    ) : (
-                      <div className="flex h-14 w-14 items-center justify-center rounded-full bg-slate-100 text-2xl">{pet.emoji}</div>
-                    )}
-                    <div>
-                      <h3 className="text-lg font-semibold text-slate-900">{pet.name}</h3>
-                      <p className="text-sm text-slate-600">{pet.species} • {pet.breed} • {pet.age} years • {pet.weightKg} kg</p>
-                    </div>
-                  </div>
-                  <button type="button" onClick={() => handleDeletePet(pet.id)} className="rounded-lg bg-rose-600 px-3 py-2 text-xs font-semibold text-white hover:bg-rose-500">
-                    Delete
-                  </button>
-                </article>
-              ))}
-            </div>
-          </div>
-        )}
-
-        {activeTab === "ai" && (
-          <div className="space-y-4">
-            <h2 className="text-2xl font-semibold text-slate-900">AI Assistance Chatbot</h2>
-            <div className="rounded-2xl border border-slate-200 bg-white p-4 shadow-sm">
-              <div className="max-h-[320px] space-y-2 overflow-y-auto pr-1">
-                {messages.map((message) => (
-                  <div key={message.id} className={`max-w-[85%] rounded-xl px-3 py-2 text-sm ${message.sender === "owner" ? "ml-auto bg-green-100 text-green-900" : "bg-slate-100 text-slate-800"}`}>
-                    {message.text}
-                  </div>
-                ))}
-              </div>
-
-              <div className="mt-3 flex gap-2">
-                <input
-                  value={chatInput}
-                  onChange={(e) => setChatInput(e.target.value)}
-                  onKeyDown={(e) => {
-                    if (e.key === "Enter") handleSendMessage();
-                  }}
-                  className="flex-1 rounded-lg border border-slate-300 px-3 py-2 text-sm outline-none focus:border-green-500"
-                  placeholder="Type pet symptoms or question..."
-                />
-                <button type="button" onClick={handleSendMessage} className="rounded-lg bg-green-600 px-4 py-2 text-sm font-semibold text-white hover:bg-green-500">
-                  Send
-                </button>
-              </div>
-            </div>
-          </div>
-        )}
-
-        {activeTab === "clinics" && (
-          <div className="grid gap-4 lg:grid-cols-[1fr_2fr]">
-            {/* LEFT BAR: MY APPOINTMENTS */}
-            <article className="rounded-2xl border border-slate-200 bg-white p-4 shadow-sm lg:row-span-2">
-              <h3 className="text-lg font-semibold text-slate-900">My Appointments</h3>
-              {appointments.length === 0 ? (
-                <p className="mt-3 text-xs text-slate-500">No appointments booked yet.</p>
-              ) : (
-                <div className="mt-3 space-y-3">
-                  {appointments.map((appointment) => {
-                    const slots = getSlotsForAppointment(appointment);
-                    const canModify = appointment.status !== "cancelled";
-                    return (
-                      <div key={appointment.id} className="rounded-xl border border-slate-200 bg-slate-50 p-3">
-                        <div className="flex flex-wrap items-center justify-between gap-2">
-                          <p className="text-sm font-semibold text-slate-900">{appointment.clinicName}</p>
-                          <span className={`rounded-full px-2 py-1 text-[11px] font-semibold ${appointmentStatusClass(appointment.status)}`}>
-                            {appointment.status}
-                          </span>
-                        </div>
-                        <p className="mt-1 text-xs text-slate-700">
-                          {appointment.surgeonName} • {appointment.slot}
-                        </p>
-                        <p className="text-[11px] text-slate-600">Pet: {appointment.petName}</p>
-
-                        {canModify && slots.length > 0 && (
-                          <div className="mt-2 space-y-2">
-                            <select
-                              value={rescheduleSlotByAppointment[appointment.id] || ""}
-                              onChange={(event) =>
-                                setRescheduleSlotByAppointment((prev) => ({
-                                  ...prev,
-                                  [appointment.id]: event.target.value,
-                                }))
-                              }
-                              className="w-full rounded-lg border border-slate-300 px-2 py-1 text-xs outline-none focus:border-green-500"
-                            >
-                              <option value="">Select new slot</option>
-                              {slots.map((slot) => (
-                                <option key={slot} value={slot}>{slot}</option>
-                              ))}
-                            </select>
-                            <div className="flex gap-2">
-                              <button
-                                type="button"
-                                onClick={() => handleRescheduleAppointment(appointment)}
-                                className="flex-1 rounded-lg bg-blue-600 px-2 py-1 text-[11px] font-semibold text-white hover:bg-blue-500"
-                              >
-                                Reschedule
-                              </button>
-                              <button
-                                type="button"
-                                onClick={() => handleCancelAppointment(appointment.id)}
-                                className="flex-1 rounded-lg bg-rose-600 px-2 py-1 text-[11px] font-semibold text-white hover:bg-rose-500"
-                              >
-                                Cancel
-                              </button>
-                            </div>
-                          </div>
-                        )}
-                      </div>
-                    );
-                  })}
-                </div>
-              )}
-            </article>
-
-            {/* RIGHT BAR: AVAILABLE CLINICS */}
-            <div>
-              <div className="mb-3 flex items-center justify-between">
-                <h2 className="text-lg font-semibold text-slate-900">Available Clinics & Surgeons</h2>
-                <span className="text-xs font-semibold text-green-600">{nearbyClinics.length} active</span>
-              </div>
-
-              {locationError && (
-                <article className="mb-3 rounded-xl border border-amber-200 bg-amber-50 p-3 text-xs text-amber-700">
-                  {locationError}
-                </article>
-              )}
-
-              {nearbyClinics.length === 0 ? (
-                <article className="rounded-2xl border border-dashed border-slate-300 bg-white p-4 text-sm text-slate-600 shadow-sm">
-                  No clinic availability published yet. Please check back later.
-                </article>
-              ) : (
-                <div className="space-y-3">
-                  {nearbyClinics.map((clinic) => (
-                  <article key={clinic.id} className="rounded-2xl border border-slate-200 bg-white p-4 shadow-sm">
-                    <div className="flex items-start justify-between gap-3">
-                      <div>
-                        <h3 className="text-lg font-semibold text-slate-900">{clinic.name}</h3>
-                        <p className="mt-1 text-sm text-slate-600">{clinic.address}</p>
-                        <p className="mt-1 text-sm text-slate-700">📞 {clinic.phone}</p>
-                        <p className="mt-1 text-xs font-medium text-emerald-700">{clinic.specialization}</p>
-                        {userLocation && typeof clinic.latitude === "number" && typeof clinic.longitude === "number" && (
-                          <p className="mt-1 text-xs font-medium text-blue-700">
-                            Approx. {distanceKm(userLocation.latitude, userLocation.longitude, clinic.latitude, clinic.longitude).toFixed(1)} km away
-                          </p>
-                        )}
-                      </div>
-                      <span className="rounded-full bg-emerald-100 px-3 py-1 text-xs font-semibold text-emerald-700">Active</span>
-                    </div>
-
-                    <div className="mt-3 rounded-xl bg-slate-50 p-3">
-                      <div className="mb-2">
-                        <label className="text-xs font-semibold text-slate-700">Book for pet</label>
-                        <select
-                          value={bookingPetByClinic[clinic.id] || pets[0]?.id || ""}
-                          onChange={(event) =>
-                            setBookingPetByClinic((prev) => ({
-                              ...prev,
-                              [clinic.id]: event.target.value,
-                            }))
-                          }
-                          className="mt-1 w-full rounded-lg border border-slate-300 px-2 py-2 text-xs outline-none focus:border-green-500"
-                        >
-                          {pets.map((pet) => (
-                            <option key={pet.id} value={pet.id}>{pet.name}</option>
-                          ))}
-                        </select>
-                      </div>
-
-                      <p className="text-sm font-semibold text-slate-900">Available Surgeons and Time Slots</p>
-                      {clinic.surgeons.length === 0 ? (
-                        <p className="mt-2 text-xs text-slate-500">No surgeons added yet for this clinic.</p>
-                      ) : (
-                        <div className="mt-2 space-y-2">
-                          {clinic.surgeons.map((surgeon) => (
-                            <div key={surgeon.id} className="rounded-lg border border-slate-200 bg-white p-2">
-                              <p className="text-sm font-semibold text-slate-900">{surgeon.name}</p>
-                              <p className="text-xs text-slate-600">{surgeon.specialization}</p>
-                              <div className="mt-2 flex flex-wrap gap-1">
-                                {surgeon.availableSlots.length === 0 ? (
-                                  <span className="text-xs text-slate-500">No slots published</span>
-                                ) : (
-                                  surgeon.availableSlots.map((slot) => (
-                                    <button
-                                      key={slot}
-                                      type="button"
-                                      onClick={() => handleBookAppointment(clinic, surgeon, slot)}
-                                      disabled={isSlotBooked(clinic.id, surgeon.id, slot)}
-                                      className={`rounded-full px-2 py-1 text-xs font-medium ${
-                                        isSlotBooked(clinic.id, surgeon.id, slot)
-                                          ? "cursor-not-allowed bg-slate-200 text-slate-500"
-                                          : "bg-blue-100 text-blue-700 hover:bg-blue-200"
-                                      }`}
-                                    >
-                                      {slot}{isSlotBooked(clinic.id, surgeon.id, slot) ? " (Booked)" : ""}
-                                    </button>
-                                  ))
-                                )}
-                              </div>
-
-                              <div className="mt-2 rounded-md border border-slate-200 bg-slate-50 p-2">
-                                <p className="text-xs font-semibold text-slate-700">Send inquiry to surgeon</p>
-                                <textarea
-                                  value={inquiryBySurgeon[`${clinic.id}_${surgeon.id}`] || ""}
-                                  onChange={(event) =>
-                                    setInquiryBySurgeon((prev) => ({
-                                      ...prev,
-                                      [`${clinic.id}_${surgeon.id}`]: event.target.value,
-                                    }))
-                                  }
-                                  placeholder="Type your question..."
-                                  rows={2}
-                                  className="mt-1 w-full rounded border border-slate-300 px-2 py-1 text-xs outline-none focus:border-green-500"
-                                />
-                                <button
-                                  type="button"
-                                  onClick={() => handleSendSurgeonInquiry(clinic, surgeon)}
-                                  className="mt-1 rounded bg-green-600 px-2 py-1 text-xs font-semibold text-white hover:bg-green-500"
-                                >
-                                  Send Inquiry
-                                </button>
-                              </div>
-                            </div>
-                          ))}
-                        </div>
-                      )}
-                    </div>
-                  </article>
-                ))}
-              </div>
-            )}
-            </div>
-          </div>
-        )}
-
-        {/* Surgeon Inquiries Section - Below Clinics Layout */}
-        {activeTab === "clinics" && surgeonInquiries.length > 0 && (
-          <article className="mt-4 rounded-2xl border border-slate-200 bg-white p-4 shadow-sm">
-            <h3 className="text-lg font-semibold text-slate-900">My Surgeon Inquiries</h3>
-            <div className="mt-2 space-y-2">
-              {surgeonInquiries.slice(0, 8).map((inquiry) => (
-                <div key={inquiry.id} className="rounded-lg border border-slate-200 bg-slate-50 p-3">
-                  <div className="flex items-center justify-between gap-2">
-                    <p className="text-xs font-semibold text-slate-900">{inquiry.surgeonName} • {inquiry.clinicName}</p>
-                    <span className={`rounded-full px-2 py-1 text-[11px] font-semibold ${inquiry.status === "replied" ? "bg-emerald-100 text-emerald-700" : "bg-amber-100 text-amber-700"}`}>
-                      {inquiry.status}
-                    </span>
-                  </div>
-                  <p className="mt-1 text-xs text-slate-700">{inquiry.message}</p>
-                </div>
-              ))}
-            </div>
-          </article>
-        )}
-
-        {activeTab === "profile" && (
-          <div className="space-y-4">
-            <h2 className="text-2xl font-semibold text-slate-900">My Profile</h2>
-            <article className="rounded-2xl border border-slate-200 bg-white p-4 shadow-sm">
-              <div className="mb-3 flex items-center gap-3">
-                {profile.photoDataUrl ? (
-                  <img src={profile.photoDataUrl} alt="Profile" className="h-16 w-16 rounded-full border border-slate-200 object-cover" />
-                ) : (
-                  <div className="flex h-16 w-16 items-center justify-center rounded-full bg-slate-100 text-2xl">👤</div>
-                )}
-                <div>
-                  <label className="text-sm font-semibold text-slate-700">Profile Photo</label>
-                  <input type="file" accept="image/*" onChange={handleProfilePhotoUpload} className="mt-1 block text-xs text-slate-600" />
-                </div>
-              </div>
-
-              <div className="grid gap-2 sm:grid-cols-2">
-                <input
-                  value={profile.displayName}
-                  onChange={(e) => setProfile((prev) => ({ ...prev, displayName: e.target.value }))}
-                  placeholder="Full Name"
-                  className="rounded-lg border border-slate-300 px-3 py-2 text-sm outline-none focus:border-green-500"
-                />
-                <input
-                  value={profile.email}
-                  onChange={(e) => setProfile((prev) => ({ ...prev, email: e.target.value }))}
-                  placeholder="Email"
-                  className="rounded-lg border border-slate-300 px-3 py-2 text-sm outline-none focus:border-green-500"
-                />
-                <input
-                  value={profile.phone}
-                  onChange={(e) => setProfile((prev) => ({ ...prev, phone: e.target.value }))}
-                  placeholder="Phone"
-                  className="rounded-lg border border-slate-300 px-3 py-2 text-sm outline-none focus:border-green-500"
-                />
-                <input
-                  value={profile.address}
-                  onChange={(e) => setProfile((prev) => ({ ...prev, address: e.target.value }))}
-                  placeholder="Address"
-                  className="rounded-lg border border-slate-300 px-3 py-2 text-sm outline-none focus:border-green-500"
-                />
-              </div>
-
-              <div className="mt-3 flex flex-wrap gap-2">
-                <button type="button" onClick={handleSaveProfile} className="rounded-lg bg-green-600 px-4 py-2 text-sm font-semibold text-white hover:bg-green-500">
-                  Save Profile
-                </button>
-                <button type="button" onClick={handleDeleteProfile} className="rounded-lg bg-rose-600 px-4 py-2 text-sm font-semibold text-white hover:bg-rose-500">
-                  Delete Profile
-                </button>
-              </div>
-            </article>
-          </div>
-        )}
-      </section>
-
-      <nav className="fixed bottom-0 left-0 right-0 z-50 border-t border-slate-200 bg-white">
-        <div className="mx-auto grid w-full max-w-5xl grid-cols-5 px-2 py-3">
+        <nav className="flex-1 space-y-0.5 p-2">
           {navItems.map((item) => (
-            <button key={item.id} type="button" onClick={() => setActiveTab(item.id)} className="flex flex-col items-center justify-center gap-1">
-              <span className={`text-xl ${activeTab === item.id ? "text-green-500" : "text-slate-400"}`}>{item.icon}</span>
-              <span className={`text-xs font-medium ${activeTab === item.id ? "text-green-500" : "text-slate-500"}`}>{item.label}</span>
+            <button
+              key={item.id}
+              onClick={() => setActiveTab(item.id)}
+              className={cn(
+                "flex w-full items-center gap-2.5 rounded-lg px-3 py-2 text-[13px] font-medium transition-colors",
+                activeTab === item.id ? "bg-neutral-100 text-neutral-900" : "text-neutral-500 hover:bg-neutral-50 hover:text-neutral-700",
+              )}
+            >
+              <item.icon className="h-4 w-4" />
+              {item.label}
             </button>
           ))}
+        </nav>
+
+        <div className="border-t border-neutral-200 p-3">
+          <button onClick={handleLogout} className="flex w-full items-center gap-2 rounded-lg px-3 py-2 text-[13px] font-medium text-neutral-500 transition hover:bg-neutral-50 hover:text-neutral-700">
+            <LogOut className="h-4 w-4" />
+            Sign out
+          </button>
         </div>
-      </nav>
+      </aside>
+
+      {/* ── Main area ── */}
+      <div className="flex flex-1 flex-col overflow-hidden">
+        {/* Top bar */}
+        <header className="flex h-14 shrink-0 items-center justify-between border-b border-neutral-200 bg-white px-4 lg:px-6">
+          <div className="flex items-center gap-3">
+            <button onClick={() => setMobileNavOpen(!mobileNavOpen)} className="rounded-md p-1.5 text-neutral-500 hover:bg-neutral-100 lg:hidden">
+              <Menu className="h-5 w-5" />
+            </button>
+            <h1 className="text-sm font-semibold text-neutral-900">{navItems.find((n) => n.id === activeTab)?.label ?? "Overview"}</h1>
+          </div>
+          <div className="flex items-center gap-3">
+            <span className="hidden text-sm text-neutral-500 sm:block">{firstName}</span>
+            <Avatar className="h-7 w-7">
+              {profile.photoDataUrl ? <AvatarImage src={profile.photoDataUrl} alt={firstName} /> : null}
+              <AvatarFallback>{firstName[0]}</AvatarFallback>
+            </Avatar>
+          </div>
+        </header>
+
+        {/* Mobile nav dropdown */}
+        {mobileNavOpen && (
+          <div className="border-b border-neutral-200 bg-white p-2 lg:hidden animate-slide-down">
+            {navItems.map((item) => (
+              <button key={item.id} onClick={() => { setActiveTab(item.id); setMobileNavOpen(false); }}
+                className={cn("flex w-full items-center gap-2.5 rounded-lg px-3 py-2 text-sm font-medium", activeTab === item.id ? "bg-neutral-100 text-neutral-900" : "text-neutral-500")}>
+                <item.icon className="h-4 w-4" />{item.label}
+              </button>
+            ))}
+            <Separator className="my-1" />
+            <button onClick={handleLogout} className="flex w-full items-center gap-2.5 rounded-lg px-3 py-2 text-sm font-medium text-neutral-500">
+              <LogOut className="h-4 w-4" />Sign out
+            </button>
+          </div>
+        )}
+
+        {/* Content */}
+        <main className="flex-1 overflow-y-auto">
+          <div className="mx-auto max-w-5xl px-4 py-6 lg:px-8">
+            {/* ── HOME TAB ── */}
+            {activeTab === "home" && (
+              <div className="space-y-6 animate-in">
+                {/* Welcome */}
+                <div>
+                  <h2 className="text-lg font-semibold text-neutral-900">Welcome back, {firstName}</h2>
+                  <p className="text-sm text-neutral-500">Here's an overview of your pets and recent activity.</p>
+                </div>
+
+                {/* Quick stats */}
+                <div className="grid gap-3 sm:grid-cols-3">
+                  {[
+                    { label: "Active Pets", value: pets.length, action: () => setActiveTab("pets") },
+                    { label: "Appointments", value: appointments.filter((a) => a.status !== "cancelled").length, action: () => setActiveTab("clinics") },
+                    { label: "AI Assessments", value: predictions.length, action: () => setActiveTab("ai") },
+                  ].map((stat) => (
+                    <button key={stat.label} onClick={stat.action} className="flex items-center justify-between rounded-lg border border-neutral-200 bg-white p-4 text-left transition hover:border-neutral-300">
+                      <div>
+                        <p className="text-2xl font-semibold text-neutral-900">{stat.value}</p>
+                        <p className="text-xs text-neutral-500">{stat.label}</p>
+                      </div>
+                      <ChevronRight className="h-4 w-4 text-neutral-300" />
+                    </button>
+                  ))}
+                </div>
+
+                {/* Vaccination alert */}
+                <Alert variant="warning">
+                  <AlertTriangle />
+                  <div>
+                    <p className="font-medium">Vaccination due soon</p>
+                    <p className="mt-0.5 text-xs opacity-80">Buddy's Rabies booster is due in 3 days.</p>
+                  </div>
+                </Alert>
+
+                {/* Pets preview */}
+                <div>
+                  <div className="mb-3 flex items-center justify-between">
+                    <h3 className="text-sm font-semibold text-neutral-900">Your Pets</h3>
+                    <button onClick={() => setActiveTab("pets")} className="text-xs font-medium text-neutral-500 hover:text-neutral-900">View all</button>
+                  </div>
+                  <div className="grid gap-3 sm:grid-cols-2">
+                    {pets.slice(0, 4).map((pet) => (
+                      <div key={pet.id} className="flex items-center gap-3 rounded-lg border border-neutral-200 bg-white p-3">
+                        <Avatar className="h-10 w-10 rounded-lg">
+                          {pet.photoDataUrl ? <AvatarImage src={pet.photoDataUrl} alt={pet.name} className="rounded-lg object-cover" /> : null}
+                          <AvatarFallback className="rounded-lg text-base">{pet.emoji}</AvatarFallback>
+                        </Avatar>
+                        <div className="flex-1 min-w-0">
+                          <p className="text-sm font-medium text-neutral-900">{pet.name}</p>
+                          <p className="text-xs text-neutral-500 truncate">{pet.breed} &middot; {pet.age}y &middot; {pet.weightKg}kg</p>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+
+                {/* Risk predictions */}
+                <div>
+                  <h3 className="mb-3 text-sm font-semibold text-neutral-900">Recent Risk Assessments</h3>
+                  <div className="divide-y divide-neutral-100 rounded-lg border border-neutral-200 bg-white">
+                    {predictions.map((item) => (
+                      <div key={item.id} className="flex items-center justify-between px-4 py-3">
+                        <div className="flex items-center gap-3 min-w-0">
+                          <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-neutral-100">
+                            <Brain className="h-4 w-4 text-neutral-500" />
+                          </div>
+                          <div className="min-w-0">
+                            <p className="text-sm font-medium text-neutral-900">{item.title}</p>
+                            <p className="text-xs text-neutral-500">{item.pet} &middot; {item.age}</p>
+                          </div>
+                        </div>
+                        <Badge variant={item.variant}>{item.risk}</Badge>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              </div>
+            )}
+
+            {/* ── PETS TAB ── */}
+            {activeTab === "pets" && (
+              <div className="space-y-6 animate-in">
+                <div className="flex items-center justify-between">
+                  <h2 className="text-lg font-semibold text-neutral-900">My Pets</h2>
+                  <Badge variant="outline">{pets.length} total</Badge>
+                </div>
+
+                {/* Add pet form */}
+                <div className="rounded-lg border border-neutral-200 bg-white p-4">
+                  <h3 className="text-sm font-semibold text-neutral-900">Add new pet</h3>
+                  <div className="mt-3 grid gap-3 sm:grid-cols-2">
+                    <div className="space-y-1.5">
+                      <Label>Name</Label>
+                      <Input value={newPet.name} onChange={(e) => setNewPet((p) => ({ ...p, name: e.target.value }))} placeholder="Pet name" />
+                    </div>
+                    <div className="space-y-1.5">
+                      <Label>Species</Label>
+                      <select value={newPet.species} onChange={(e) => setNewPet((p) => ({ ...p, species: e.target.value }))} className="flex h-9 w-full rounded-lg border border-neutral-200 bg-white px-3 text-sm shadow-xs focus:border-neutral-400 focus:outline-none focus:ring-2 focus:ring-neutral-950/5">
+                        <option>Dog</option><option>Cat</option>
+                      </select>
+                    </div>
+                    <div className="space-y-1.5"><Label>Breed</Label><Input value={newPet.breed} onChange={(e) => setNewPet((p) => ({ ...p, breed: e.target.value }))} placeholder="Breed" /></div>
+                    <div className="space-y-1.5"><Label>Age (years)</Label><Input value={newPet.age} onChange={(e) => setNewPet((p) => ({ ...p, age: e.target.value }))} placeholder="e.g. 3" /></div>
+                    <div className="space-y-1.5"><Label>Weight (kg)</Label><Input value={newPet.weightKg} onChange={(e) => setNewPet((p) => ({ ...p, weightKg: e.target.value }))} placeholder="e.g. 12" /></div>
+                    <div className="space-y-1.5">
+                      <Label>Photo</Label>
+                      <input type="file" accept="image/*" onChange={handlePhotoUpload((url) => setNewPet((p) => ({ ...p, photoDataUrl: url })))} className="text-xs text-neutral-500 file:mr-2 file:rounded file:border-0 file:bg-neutral-100 file:px-2 file:py-1 file:text-xs file:font-medium file:text-neutral-700" />
+                    </div>
+                  </div>
+                  <Button size="sm" className="mt-4" onClick={handleAddPet}><Plus className="h-3.5 w-3.5" />Add Pet</Button>
+                </div>
+
+                {/* Pet list */}
+                <div className="divide-y divide-neutral-100 rounded-lg border border-neutral-200 bg-white">
+                  {pets.length === 0 ? (
+                    <p className="px-4 py-8 text-center text-sm text-neutral-400">No pets added yet.</p>
+                  ) : pets.map((pet) => (
+                    <div key={pet.id} className="flex items-center justify-between px-4 py-3">
+                      <div className="flex items-center gap-3 min-w-0">
+                        <Avatar className="h-9 w-9 rounded-lg">
+                          {pet.photoDataUrl ? <AvatarImage src={pet.photoDataUrl} alt={pet.name} className="rounded-lg object-cover" /> : null}
+                          <AvatarFallback className="rounded-lg">{pet.emoji}</AvatarFallback>
+                        </Avatar>
+                        <div className="min-w-0">
+                          <p className="text-sm font-medium text-neutral-900">{pet.name}</p>
+                          <p className="text-xs text-neutral-500">{pet.species} &middot; {pet.breed} &middot; {pet.age}y &middot; {pet.weightKg}kg</p>
+                        </div>
+                      </div>
+                      <Button variant="ghost" size="sm" onClick={() => handleDeletePet(pet.id)}><Trash2 className="h-3.5 w-3.5 text-neutral-400" /></Button>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
+
+            {/* ── AI TAB ── */}
+            {activeTab === "ai" && (
+              <div className="flex h-[calc(100vh-8rem)] flex-col animate-in">
+                <h2 className="mb-4 text-lg font-semibold text-neutral-900">AI Health Assistant</h2>
+                <div className="flex-1 overflow-y-auto rounded-lg border border-neutral-200 bg-white p-4">
+                  <div className="space-y-3">
+                    {messages.map((m) => (
+                      <div key={m.id} className={cn("max-w-[80%] rounded-lg px-3 py-2 text-sm", m.sender === "owner" ? "ml-auto bg-neutral-900 text-white" : "bg-neutral-100 text-neutral-800")}>
+                        {m.text}
+                      </div>
+                    ))}
+                  </div>
+                </div>
+                <div className="mt-3 flex gap-2">
+                  <Input
+                    value={chatInput}
+                    onChange={(e) => setChatInput(e.target.value)}
+                    onKeyDown={(e) => { if (e.key === "Enter") handleSendMessage(); }}
+                    placeholder="Describe symptoms or ask a question..."
+                    className="flex-1"
+                  />
+                  <Button onClick={handleSendMessage}><Send className="h-4 w-4" /></Button>
+                </div>
+              </div>
+            )}
+
+            {/* ── CLINICS TAB ── */}
+            {activeTab === "clinics" && (
+              <div className="space-y-6 animate-in">
+                <div className="flex items-center justify-between">
+                  <h2 className="text-lg font-semibold text-neutral-900">Clinics & Appointments</h2>
+                  {nearbyClinics.length > 0 && <Badge variant="success">{nearbyClinics.length} available</Badge>}
+                </div>
+
+                {locationError && <Alert variant="warning"><AlertTriangle /><span>{locationError}</span></Alert>}
+
+                {/* Appointments */}
+                {appointments.length > 0 && (
+                  <div>
+                    <h3 className="mb-3 text-sm font-semibold text-neutral-900">My Appointments</h3>
+                    <div className="divide-y divide-neutral-100 rounded-lg border border-neutral-200 bg-white">
+                      {appointments.map((appt) => {
+                        const clinic = clinics.find((c) => c.id === appt.clinicId);
+                        const surgeon = clinic?.surgeons.find((s) => s.id === appt.surgeonId);
+                        const slots = surgeon?.availableSlots ?? [];
+                        return (
+                          <div key={appt.id} className="px-4 py-3">
+                            <div className="flex items-center justify-between gap-2">
+                              <div className="flex items-center gap-2 min-w-0">
+                                <Calendar className="h-4 w-4 shrink-0 text-neutral-400" />
+                                <div className="min-w-0">
+                                  <p className="text-sm font-medium text-neutral-900 truncate">{appt.clinicName}</p>
+                                  <p className="text-xs text-neutral-500">{appt.surgeonName} &middot; {appt.slot} &middot; {appt.petName}</p>
+                                </div>
+                              </div>
+                              <Badge variant={appt.status === "confirmed" ? "success" : appt.status === "cancelled" ? "danger" : "warning"}>
+                                {appt.status}
+                              </Badge>
+                            </div>
+                            {appt.status !== "cancelled" && slots.length > 0 && (
+                              <div className="mt-2 flex items-center gap-2">
+                                <select value={rescheduleSlotByAppointment[appt.id] || ""} onChange={(e) => setRescheduleSlotByAppointment((p) => ({ ...p, [appt.id]: e.target.value }))} className="h-7 flex-1 rounded border border-neutral-200 px-2 text-xs text-neutral-700">
+                                  <option value="">Reschedule to...</option>
+                                  {slots.map((s) => <option key={s} value={s}>{s}</option>)}
+                                </select>
+                                <Button size="sm" variant="secondary" onClick={() => handleRescheduleAppointment(appt)}>Reschedule</Button>
+                                <Button size="sm" variant="ghost" onClick={() => handleCancelAppointment(appt.id)}><X className="h-3.5 w-3.5 text-neutral-400" /></Button>
+                              </div>
+                            )}
+                          </div>
+                        );
+                      })}
+                    </div>
+                  </div>
+                )}
+
+                {/* Clinic directory */}
+                {nearbyClinics.length === 0 ? (
+                  <div className="rounded-lg border border-dashed border-neutral-300 bg-white px-4 py-8 text-center">
+                    <MapPin className="mx-auto mb-2 h-5 w-5 text-neutral-300" />
+                    <p className="text-sm text-neutral-500">No clinics available yet.</p>
+                  </div>
+                ) : nearbyClinics.map((clinic) => (
+                  <div key={clinic.id} className="rounded-lg border border-neutral-200 bg-white">
+                    <div className="flex items-start justify-between p-4">
+                      <div>
+                        <p className="text-sm font-semibold text-neutral-900">{clinic.name}</p>
+                        <p className="mt-0.5 text-xs text-neutral-500">{clinic.address} &middot; {clinic.phone}</p>
+                        <Badge variant="info" className="mt-1.5">{clinic.specialization}</Badge>
+                        {userLocation && typeof clinic.latitude === "number" && typeof clinic.longitude === "number" && (
+                          <p className="mt-1 text-xs text-neutral-400">{distanceKm(userLocation.latitude, userLocation.longitude, clinic.latitude, clinic.longitude).toFixed(1)} km away</p>
+                        )}
+                      </div>
+                      <div className="space-y-1.5">
+                        <Label className="text-xs">Pet</Label>
+                        <select value={bookingPetByClinic[clinic.id] || pets[0]?.id || ""} onChange={(e) => setBookingPetByClinic((p) => ({ ...p, [clinic.id]: e.target.value }))} className="h-7 rounded border border-neutral-200 px-2 text-xs">
+                          {pets.map((p) => <option key={p.id} value={p.id}>{p.name}</option>)}
+                        </select>
+                      </div>
+                    </div>
+                    {clinic.surgeons.length > 0 && (
+                      <div className="border-t border-neutral-100 p-4 pt-3">
+                        <p className="mb-2 text-xs font-medium text-neutral-500">Surgeons & Slots</p>
+                        <div className="space-y-3">
+                          {clinic.surgeons.map((surgeon) => (
+                            <div key={surgeon.id}>
+                              <div className="flex items-center justify-between">
+                                <div>
+                                  <p className="text-sm font-medium text-neutral-900">{surgeon.name}</p>
+                                  <p className="text-xs text-neutral-500">{surgeon.specialization}</p>
+                                </div>
+                              </div>
+                              <div className="mt-2 flex flex-wrap gap-1.5">
+                                {surgeon.availableSlots.length === 0 ? (
+                                  <span className="text-xs text-neutral-400">No slots</span>
+                                ) : surgeon.availableSlots.map((slot) => {
+                                  const booked = isSlotBooked(clinic.id, surgeon.id, slot);
+                                  return (
+                                    <button key={slot} onClick={() => handleBookAppointment(clinic, surgeon, slot)} disabled={booked}
+                                      className={cn("inline-flex items-center gap-1 rounded-md px-2 py-1 text-xs font-medium transition", booked ? "bg-neutral-100 text-neutral-400 cursor-not-allowed" : "bg-neutral-900 text-white hover:bg-neutral-800")}>
+                                      <Clock className="h-3 w-3" />{slot}
+                                    </button>
+                                  );
+                                })}
+                              </div>
+                              <div className="mt-2 flex gap-2">
+                                <Input value={inquiryBySurgeon[`${clinic.id}_${surgeon.id}`] || ""} onChange={(e) => setInquiryBySurgeon((p) => ({ ...p, [`${clinic.id}_${surgeon.id}`]: e.target.value }))} placeholder="Send inquiry..." className="h-7 flex-1 text-xs" />
+                                <Button size="sm" variant="secondary" onClick={() => handleSendInquiry(clinic, surgeon)}><Send className="h-3 w-3" /></Button>
+                              </div>
+                            </div>
+                          ))}
+                        </div>
+                      </div>
+                    )}
+                  </div>
+                ))}
+
+                {/* Inquiries */}
+                {surgeonInquiries.length > 0 && (
+                  <div>
+                    <h3 className="mb-3 text-sm font-semibold text-neutral-900">Inquiries</h3>
+                    <div className="divide-y divide-neutral-100 rounded-lg border border-neutral-200 bg-white">
+                      {surgeonInquiries.slice(0, 8).map((inq) => (
+                        <div key={inq.id} className="flex items-center justify-between px-4 py-3">
+                          <div className="min-w-0">
+                            <p className="text-sm font-medium text-neutral-900">{inq.surgeonName}</p>
+                            <p className="text-xs text-neutral-500 truncate">{inq.message}</p>
+                          </div>
+                          <Badge variant={inq.status === "replied" ? "success" : "warning"}>{inq.status}</Badge>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                )}
+              </div>
+            )}
+
+            {/* ── PROFILE TAB ── */}
+            {activeTab === "profile" && (
+              <div className="max-w-lg space-y-6 animate-in">
+                <h2 className="text-lg font-semibold text-neutral-900">Profile</h2>
+
+                <div className="rounded-lg border border-neutral-200 bg-white p-4">
+                  <div className="mb-4 flex items-center gap-3">
+                    <Avatar className="h-14 w-14">
+                      {profile.photoDataUrl ? <AvatarImage src={profile.photoDataUrl} alt="Profile" /> : null}
+                      <AvatarFallback className="text-lg">{firstName[0]}</AvatarFallback>
+                    </Avatar>
+                    <div>
+                      <p className="text-sm font-medium text-neutral-900">{profile.displayName || firstName}</p>
+                      <input type="file" accept="image/*" onChange={handlePhotoUpload((url) => { setProfile((p) => { const next = { ...p, photoDataUrl: url }; localStorage.setItem(PET_OWNER_PROFILE_KEY, JSON.stringify(next)); return next; }); })} className="mt-1 text-xs text-neutral-500 file:mr-2 file:rounded file:border-0 file:bg-neutral-100 file:px-2 file:py-1 file:text-xs file:font-medium file:text-neutral-700" />
+                    </div>
+                  </div>
+
+                  <div className="grid gap-3 sm:grid-cols-2">
+                    <div className="space-y-1.5"><Label>Name</Label><Input value={profile.displayName} onChange={(e) => setProfile((p) => ({ ...p, displayName: e.target.value }))} /></div>
+                    <div className="space-y-1.5"><Label>Email</Label><Input value={profile.email} onChange={(e) => setProfile((p) => ({ ...p, email: e.target.value }))} placeholder="you@email.com" /></div>
+                    <div className="space-y-1.5"><Label>Phone</Label><Input value={profile.phone} onChange={(e) => setProfile((p) => ({ ...p, phone: e.target.value }))} placeholder="Phone" /></div>
+                    <div className="space-y-1.5"><Label>Address</Label><Input value={profile.address} onChange={(e) => setProfile((p) => ({ ...p, address: e.target.value }))} placeholder="Address" /></div>
+                  </div>
+
+                  <div className="mt-4 flex gap-2">
+                    <Button size="sm" onClick={handleSaveProfile}><Save className="h-3.5 w-3.5" />Save</Button>
+                    <Button size="sm" variant="ghost" onClick={() => { localStorage.removeItem(PET_OWNER_PROFILE_KEY); localStorage.removeItem(PET_OWNER_PETS_KEY); handleLogout(); }}>
+                      <Trash2 className="h-3.5 w-3.5 text-neutral-400" />Delete account
+                    </Button>
+                  </div>
+                </div>
+              </div>
+            )}
+          </div>
+        </main>
+      </div>
     </div>
   );
 }

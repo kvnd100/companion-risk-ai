@@ -3,74 +3,80 @@ import { Link, Navigate, useNavigate } from "react-router-dom";
 import { useForm } from "react-hook-form";
 import { z } from "zod";
 import { zodResolver } from "@hookform/resolvers/zod";
+import { Eye, EyeOff, Loader2 } from "lucide-react";
 import { loginUser } from "../lib/auth-api";
-import { getAccessToken, saveAccessToken, verifyAndSaveRole, getSelectedRole, saveProfileName, getRegisteredRoleForEmail, getVerifiedRole } from "../lib/session";
+import { toast } from "../lib/use-toast";
+import {
+  getAccessToken, saveAccessToken, verifyAndSaveRole, saveUserCredentials,
+  getSelectedRole, saveProfileName, getRegisteredRoleForEmail, getVerifiedRole,
+} from "../lib/session";
 import { AuthLayout } from "../components/AuthLayout";
 import { redirectToPets } from "../lib/post-auth-redirect";
-import authVetConsultImage from "../assets/images/auth-vet-consult.jpg";
+import { Button } from "../components/ui/button";
+import { Input } from "../components/ui/input";
+import { Label } from "../components/ui/label";
+import { Separator } from "../components/ui/separator";
+import { Badge } from "../components/ui/badge";
+import { Alert } from "../components/ui/alert";
+import { AlertTriangle } from "lucide-react";
 
 const loginSchema = z.object({
-  email: z.string().email("Enter a valid email"),
-  password: z.string().min(6, "Password must be at least 6 characters"),
+  email: z.string().email("Enter a valid email address"),
+  password: z.string().min(6, "Minimum 6 characters"),
 });
 
 type LoginForm = z.infer<typeof loginSchema>;
+
+const ROLE_LABELS: Record<string, string> = {
+  "pet-owner": "Pet Owner",
+  "veterinarian": "Veterinarian",
+  "admin": "Admin",
+};
 
 export function LoginPage() {
   const navigate = useNavigate();
   const selectedRole = getSelectedRole() || "pet-owner";
   const verifiedRole = getVerifiedRole();
-  const roleLabel = selectedRole === "pet-owner" ? "Pet Owner" : selectedRole === "veterinarian" ? "Veterinarian" : "Admin";
-
-  if (getAccessToken()) {
-    const activeRole = verifiedRole || selectedRole;
-    const dashboardPath = activeRole === "veterinarian"
-      ? "/vet-dashboard"
-      : activeRole === "admin"
-        ? "/admin-dashboard"
-        : "/pets";
-    return <Navigate to={dashboardPath} replace />;
-  }
 
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [showPassword, setShowPassword] = useState(false);
 
-  const {
-    register,
-    handleSubmit,
-    formState: { errors },
-  } = useForm<LoginForm>({
+  const { register, handleSubmit, formState: { errors } } = useForm<LoginForm>({
     resolver: zodResolver(loginSchema),
     defaultValues: { email: "", password: "" },
   });
+
+  if (getAccessToken()) {
+    const activeRole = verifiedRole || selectedRole;
+    const path = activeRole === "veterinarian" ? "/vet-dashboard" : activeRole === "admin" ? "/admin-dashboard" : "/pets";
+    return <Navigate to={path} replace />;
+  }
 
   const onSubmit = handleSubmit(async (values) => {
     try {
       setErrorMessage(null);
       setIsSubmitting(true);
 
-      // Check local role mapping
       const expectedRole = getRegisteredRoleForEmail(values.email);
       if (expectedRole && expectedRole !== selectedRole) {
-        const label = expectedRole === "pet-owner" ? "Pet Owner" : expectedRole === "veterinarian" ? "Veterinarian" : "Admin";
-        setErrorMessage(`This account is registered as ${label}. Please choose that role to login.`);
-        setIsSubmitting(false);
+        setErrorMessage(`This account is registered as ${ROLE_LABELS[expectedRole] ?? expectedRole}. Select that role to continue.`);
         return;
       }
 
-      // Authenticate with backend
-      const { token, displayName } = await loginUser({
-        email: values.email,
-        password: values.password,
-      });
+      const { token, displayName } = await loginUser({ email: values.email, password: values.password });
 
+      if (!getRegisteredRoleForEmail(values.email)) {
+        saveUserCredentials(values.email, selectedRole);
+      }
       verifyAndSaveRole(values.email, selectedRole);
       saveProfileName(displayName || values.email.split("@")[0], selectedRole);
       saveAccessToken(token);
+
+      toast({ title: "Signed in", variant: "success" });
       redirectToPets(navigate);
     } catch (error: unknown) {
-      const msg = error instanceof Error ? error.message : "Login failed";
+      const msg = error instanceof Error ? error.message : "Authentication failed";
       setErrorMessage(msg);
     } finally {
       setIsSubmitting(false);
@@ -78,97 +84,88 @@ export function LoginPage() {
   });
 
   return (
-    <AuthLayout title="Welcome Back" subtitle="Secure login for pet owners, veterinarians, and administrators.">
-      <div className="flex flex-1 flex-col">
-        <header className="mb-4 flex items-center justify-between border-b border-slate-200 pb-3">
-          <button type="button" onClick={() => navigate("/auth/role")} className="text-4xl text-slate-800">&larr;</button>
-          <h1 className="text-4xl font-bold tracking-tight text-slate-900">Sign In</h1>
-          <span className="w-6"></span>
-        </header>
-
-        <div className="mb-6 overflow-hidden rounded-3xl border border-slate-200 bg-white shadow-sm">
-          <img
-            src={authVetConsultImage}
-            alt="Vet consulting pet owner"
-            className="h-72 w-full object-cover"
-          />
-          <div className="px-5 pb-5 pt-4 text-center">
-            <h2 className="text-6xl font-extrabold tracking-tight text-slate-900">Welcome Back</h2>
-            <p className="mt-2 text-[18px] leading-8 text-slate-600">Log in to monitor your pet's health with AI</p>
-            <div className="mt-3 inline-flex items-center gap-2 rounded-full bg-blue-50 px-3 py-1 text-sm font-semibold text-blue-700">
-              Role: {roleLabel}
-              <button
-                type="button"
-                onClick={() => navigate("/auth/role")}
-                className="text-xs underline underline-offset-2"
-              >
-                Change
-              </button>
-            </div>
+    <AuthLayout>
+      <div className="animate-slide-up">
+        <div className="flex items-center justify-between">
+          <div>
+            <h1 className="text-xl font-semibold tracking-tight text-neutral-900">Sign in</h1>
+            <p className="mt-1 text-sm text-neutral-500">
+              Enter your credentials to continue
+            </p>
           </div>
+          <button type="button" onClick={() => navigate("/auth/role")}>
+            <Badge variant="outline" className="cursor-pointer hover:bg-neutral-50">
+              {ROLE_LABELS[selectedRole] ?? selectedRole}
+            </Badge>
+          </button>
         </div>
 
-        <form key={selectedRole} onSubmit={onSubmit} className="space-y-5" autoComplete="off">
-          <div>
-            <label className="auth-label text-[18px]">Email Address</label>
-            <input
+        <form onSubmit={onSubmit} className="mt-6 space-y-4">
+          <div className="space-y-1.5">
+            <Label htmlFor="email">Email</Label>
+            <Input
               {...register("email")}
+              id="email"
               type="email"
               autoComplete="email"
-              className="auth-input"
-              placeholder="name@example.com"
+              placeholder="you@company.com"
             />
-            {errors.email && <p className="text-xs text-red-600 mt-1">{errors.email.message}</p>}
+            {errors.email && <p className="text-xs text-red-600">{errors.email.message}</p>}
           </div>
 
-          <div>
+          <div className="space-y-1.5">
             <div className="flex items-center justify-between">
-              <label className="auth-label text-[18px]">Password</label>
-              <Link to="/auth/forgot-password" className="text-[18px] font-semibold text-blue-600">Forgot Password?</Link>
+              <Label htmlFor="password">Password</Label>
+              <Link to="/auth/forgot-password" className="text-xs text-neutral-500 hover:text-neutral-900 transition-colors">
+                Forgot password?
+              </Link>
             </div>
             <div className="relative">
-              <input
+              <Input
                 {...register("password")}
+                id="password"
                 type={showPassword ? "text" : "password"}
                 autoComplete="current-password"
-                className="auth-input pr-12"
-                placeholder="••••••••"
+                placeholder="Enter password"
+                className="pr-9"
               />
               <button
                 type="button"
                 onClick={() => setShowPassword(!showPassword)}
-                className="absolute right-4 top-1/2 -translate-y-1/2 text-sm font-medium text-slate-500 hover:text-slate-700"
+                className="absolute right-2.5 top-1/2 -translate-y-1/2 text-neutral-400 hover:text-neutral-600"
+                tabIndex={-1}
               >
-                {showPassword ? "Hide" : "Show"}
+                {showPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
               </button>
             </div>
-            {errors.password && <p className="text-xs text-red-600 mt-1">{errors.password.message}</p>}
+            {errors.password && <p className="text-xs text-red-600">{errors.password.message}</p>}
           </div>
 
-          <div className="flex items-center gap-2 py-1 text-[18px]">
-            <input type="checkbox" className="h-6 w-6 rounded border-slate-300" />
-            <label className="text-slate-700">Remember this device</label>
-          </div>
+          {errorMessage && (
+            <Alert variant="danger" className="animate-slide-up">
+              <AlertTriangle />
+              <span>{errorMessage}</span>
+            </Alert>
+          )}
 
-          {errorMessage && <p className="text-sm text-red-600">{errorMessage}</p>}
-
-          <button
-            type="submit"
-            disabled={isSubmitting}
-            className="auth-primary-btn mt-2"
-          >
-            {isSubmitting ? "Signing in..." : "Sign In"}
-          </button>
+          <Button type="submit" size="lg" className="w-full" disabled={isSubmitting}>
+            {isSubmitting ? <><Loader2 className="h-4 w-4 animate-spin" /> Signing in...</> : "Sign in"}
+          </Button>
         </form>
 
-        <p className="mt-6 text-center text-lg text-slate-600">
-          Don&apos;t have an account? <Link to="/auth/register" className="font-semibold text-blue-600">Create Account</Link>
-        </p>
-
-        <div className="mt-8 pb-2 text-center text-sm text-slate-400">
-          <p>Privacy Policy  &middot;  Terms of Service  &middot;  Help Center</p>
-          <p className="mt-2">&copy; 2026 PetHealth AI. All rights reserved.</p>
+        <div className="relative my-6">
+          <Separator />
+          <span className="absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 bg-neutral-50 px-3 text-xs text-neutral-400 lg:bg-white">
+            or
+          </span>
         </div>
+
+        <p className="text-center text-sm text-neutral-500">
+          Don&apos;t have an account?{" "}
+          <Link to="/auth/register" className="font-medium text-neutral-900 hover:underline">
+            Create account
+          </Link>
+        </p>
       </div>
     </AuthLayout>
   );
