@@ -12,6 +12,11 @@
     -webkit-font-smoothing: antialiased;
     -moz-osx-font-smoothing: grayscale;
     text-rendering: optimizeLegibility;
+    color-scheme: light;
+  }
+
+  html.dark {
+    color-scheme: dark;
   }
 
   html, body, #root {
@@ -27,16 +32,29 @@
     -webkit-tap-highlight-color: transparent;
   }
 
+  .dark body,
+  html.dark body {
+    color: #e5e5e5;
+    background: #0a0a0a;
+  }
+
   ::selection {
     background: #171717;
     color: #ffffff;
   }
 
+  .dark ::selection {
+    background: #e5e5e5;
+    color: #0a0a0a;
+  }
+
   button, a { touch-action: manipulation; }
 
-  /* Scrollbar styling */
   ::-webkit-scrollbar { width: 6px; }
   ::-webkit-scrollbar-track { background: transparent; }
   ::-webkit-scrollbar-thumb { background: #d4d4d4; border-radius: 3px; }
   ::-webkit-scrollbar-thumb:hover { background: #a3a3a3; }
+
+  .dark ::-webkit-scrollbar-thumb { background: #404040; }
+  .dark ::-webkit-scrollbar-thumb:hover { background: #525252; }
 }

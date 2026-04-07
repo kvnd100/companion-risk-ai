@@ -14,6 +14,7 @@ import { Badge } from "../components/ui/badge";
 import { Separator } from "../components/ui/separator";
 import { Avatar, AvatarImage, AvatarFallback } from "../components/ui/avatar";
 import { Dropzone } from "../components/ui/dropzone";
+import { ThemeSwitcher } from "../components/ThemeSwitcher";
 import { cn } from "../lib/utils";
 import petBuddyImage from "../assets/images/pet-buddy.jpg";
 import petLunaImage from "../assets/images/pet-luna.jpg";
@@ -222,27 +223,29 @@ export function PetOwnerDashboardPage() {
 
   // ── RENDER ──
   return (
-    <div className="flex h-screen w-full overflow-hidden bg-[#fafafa]">
+    <div className="flex h-screen w-full overflow-hidden bg-[#fafafa] dark:bg-neutral-950">
       {/* ─── Sidebar ─── */}
-      <aside className="hidden w-[220px] shrink-0 flex-col border-r border-neutral-200/80 bg-white lg:flex">
+      <aside className="hidden w-[220px] shrink-0 flex-col border-r border-neutral-200/80 bg-white dark:border-neutral-800 dark:bg-neutral-900 lg:flex">
         {/* Brand */}
         <div className="flex h-14 items-center gap-2.5 px-5">
-          <div className="flex h-7 w-7 items-center justify-center rounded-lg bg-neutral-900">
-            <svg viewBox="0 0 24 24" fill="white" className="h-3.5 w-3.5"><ellipse cx="12" cy="17.5" rx="3.5" ry="3" /><circle cx="8.2" cy="11.2" r="1.8" /><circle cx="15.8" cy="11.2" r="1.8" /><circle cx="6.5" cy="14.8" r="1.6" /><circle cx="17.5" cy="14.8" r="1.6" /></svg>
+          <div className="flex h-7 w-7 items-center justify-center rounded-lg bg-neutral-900 dark:bg-white">
+            <svg viewBox="0 0 24 24" className="h-3.5 w-3.5 fill-white dark:fill-neutral-900"><ellipse cx="12" cy="17.5" rx="3.5" ry="3" /><circle cx="8.2" cy="11.2" r="1.8" /><circle cx="15.8" cy="11.2" r="1.8" /><circle cx="6.5" cy="14.8" r="1.6" /><circle cx="17.5" cy="14.8" r="1.6" /></svg>
           </div>
-          <span className="text-[13px] font-semibold tracking-tight text-neutral-900">PetCare AI</span>
+          <span className="text-[13px] font-semibold tracking-tight text-neutral-900 dark:text-white">PetCare AI</span>
         </div>
 
-        <Separator />
+        <Separator className="dark:bg-neutral-800" />
 
         {/* Nav */}
         <nav className="flex-1 px-3 py-3">
-          <p className="mb-2 px-2 text-[10px] font-semibold uppercase tracking-widest text-neutral-400">Menu</p>
+          <p className="mb-2 px-2 text-[10px] font-semibold uppercase tracking-widest text-neutral-400 dark:text-neutral-500">Menu</p>
           <div className="space-y-0.5">
             {navItems.map((item) => (
               <button key={item.id} onClick={() => setActiveTab(item.id)}
                 className={cn("flex w-full items-center gap-2.5 rounded-lg px-2.5 py-[7px] text-[13px] font-medium transition-all duration-100",
-                  activeTab === item.id ? "bg-neutral-900 text-white shadow-sm" : "text-neutral-500 hover:bg-neutral-100 hover:text-neutral-700")}>
+                  activeTab === item.id
+                    ? "bg-neutral-900 text-white shadow-sm dark:bg-white dark:text-neutral-900"
+                    : "text-neutral-500 hover:bg-neutral-100 hover:text-neutral-700 dark:text-neutral-400 dark:hover:bg-neutral-800 dark:hover:text-neutral-200")}>
                 <item.icon className="h-[15px] w-[15px]" />
                 {item.label}
               </button>
@@ -250,19 +253,24 @@ export function PetOwnerDashboardPage() {
           </div>
         </nav>
 
+        {/* Theme */}
+        <div className="px-3 pb-2">
+          <ThemeSwitcher />
+        </div>
+
         {/* Sidebar footer */}
-        <div className="border-t border-neutral-200/80 p-3">
+        <div className="border-t border-neutral-200/80 p-3 dark:border-neutral-800">
           <div className="flex items-center gap-2.5 rounded-lg px-2.5 py-2">
             <Avatar className="h-7 w-7">
               {profile.photoDataUrl ? <AvatarImage src={profile.photoDataUrl} /> : null}
               <AvatarFallback className="text-[11px]">{firstName[0]}</AvatarFallback>
             </Avatar>
             <div className="flex-1 min-w-0">
-              <p className="text-[12px] font-medium text-neutral-900 truncate">{storedName}</p>
-              <p className="text-[10px] text-neutral-400">Pet Owner</p>
+              <p className="text-[12px] font-medium text-neutral-900 truncate dark:text-white">{storedName}</p>
+              <p className="text-[10px] text-neutral-400 dark:text-neutral-500">Pet Owner</p>
             </div>
           </div>
-          <button onClick={handleLogout} className="mt-1 flex w-full items-center gap-2 rounded-lg px-2.5 py-[7px] text-[12px] font-medium text-neutral-400 transition hover:bg-neutral-100 hover:text-neutral-600">
+          <button onClick={handleLogout} className="mt-1 flex w-full items-center gap-2 rounded-lg px-2.5 py-[7px] text-[12px] font-medium text-neutral-400 transition hover:bg-neutral-100 hover:text-neutral-600 dark:hover:bg-neutral-800 dark:hover:text-neutral-300">
             <LogOut className="h-3.5 w-3.5" />Sign out
           </button>
         </div>
@@ -271,13 +279,14 @@ export function PetOwnerDashboardPage() {
       {/* ─── Main ─── */}
       <div className="flex flex-1 flex-col overflow-hidden">
         {/* Header */}
-        <header className="flex h-14 shrink-0 items-center justify-between border-b border-neutral-200/80 bg-white px-4 lg:px-8">
+        <header className="flex h-14 shrink-0 items-center justify-between border-b border-neutral-200/80 bg-white px-4 lg:px-8 dark:border-neutral-800 dark:bg-neutral-900">
           <div className="flex items-center gap-3">
-            <button onClick={() => setMobileNavOpen(!mobileNavOpen)} className="rounded-md p-1.5 text-neutral-500 hover:bg-neutral-100 lg:hidden"><Menu className="h-5 w-5" /></button>
-            <div className="hidden h-5 w-px bg-neutral-200 lg:block" />
-            <h1 className="text-[13px] font-semibold text-neutral-900">{navItems.find((n) => n.id === activeTab)?.label}</h1>
+            <button onClick={() => setMobileNavOpen(!mobileNavOpen)} className="rounded-md p-1.5 text-neutral-500 hover:bg-neutral-100 lg:hidden dark:hover:bg-neutral-800"><Menu className="h-5 w-5" /></button>
+            <div className="hidden h-5 w-px bg-neutral-200 lg:block dark:bg-neutral-700" />
+            <h1 className="text-[13px] font-semibold text-neutral-900 dark:text-white">{navItems.find((n) => n.id === activeTab)?.label}</h1>
           </div>
-          <div className="flex items-center gap-2">
+          <div className="flex items-center gap-3">
+            <ThemeSwitcher compact />
             <Badge variant="outline" className="hidden sm:inline-flex gap-1"><Sparkles className="h-3 w-3" />AI Active</Badge>
             <Avatar className="h-7 w-7 cursor-pointer" onClick={() => setActiveTab("profile")}>
               {profile.photoDataUrl ? <AvatarImage src={profile.photoDataUrl} /> : null}
@@ -288,14 +297,15 @@ export function PetOwnerDashboardPage() {
 
         {/* Mobile nav */}
         {mobileNavOpen && (
-          <div className="border-b border-neutral-200 bg-white p-2 lg:hidden animate-slide-down">
+          <div className="border-b border-neutral-200 bg-white p-2 lg:hidden animate-slide-down dark:border-neutral-800 dark:bg-neutral-900">
             {navItems.map((item) => (
               <button key={item.id} onClick={() => { setActiveTab(item.id); setMobileNavOpen(false); }}
-                className={cn("flex w-full items-center gap-2.5 rounded-lg px-3 py-2 text-sm font-medium", activeTab === item.id ? "bg-neutral-100 text-neutral-900" : "text-neutral-500")}>
+                className={cn("flex w-full items-center gap-2.5 rounded-lg px-3 py-2 text-sm font-medium",
+                  activeTab === item.id ? "bg-neutral-100 text-neutral-900 dark:bg-neutral-800 dark:text-white" : "text-neutral-500 dark:text-neutral-400")}>
                 <item.icon className="h-4 w-4" />{item.label}
               </button>
             ))}
-            <Separator className="my-1" />
+            <Separator className="my-1 dark:bg-neutral-800" />
             <button onClick={handleLogout} className="flex w-full items-center gap-2.5 rounded-lg px-3 py-2 text-sm font-medium text-neutral-400"><LogOut className="h-4 w-4" />Sign out</button>
           </div>
         )}
@@ -311,8 +321,8 @@ export function PetOwnerDashboardPage() {
                 <div className="flex flex-col gap-6 lg:flex-row lg:items-start lg:gap-8">
                   {/* Left: welcome */}
                   <div className="flex-1">
-                    <h2 className="text-2xl font-semibold tracking-tight text-neutral-900">Welcome back, {firstName}</h2>
-                    <p className="mt-1 text-sm text-neutral-500">Here's what's happening with your pets today.</p>
+                    <h2 className="text-2xl font-semibold tracking-tight text-neutral-900 dark:text-white">Welcome back, {firstName}</h2>
+                    <p className="mt-1 text-sm text-neutral-500 dark:text-neutral-400">Here's what's happening with your pets today.</p>
 
                     {/* Stats row */}
                     <div className="mt-5 grid grid-cols-2 gap-3 sm:grid-cols-4">
@@ -322,13 +332,13 @@ export function PetOwnerDashboardPage() {
                         { label: "Assessments", value: predictions.length, icon: Brain, onClick: () => setActiveTab("ai") },
                         { label: "Health Score", value: "92%", icon: Activity, onClick: () => {} },
                       ].map((s) => (
-                        <button key={s.label} onClick={s.onClick} className="group rounded-xl border border-neutral-200/80 bg-white p-4 text-left transition-all hover:border-neutral-300 hover:shadow-sm">
+                        <button key={s.label} onClick={s.onClick} className="group rounded-xl border border-neutral-200/80 bg-white dark:border-neutral-800 dark:bg-neutral-900 p-4 text-left transition-all hover:border-neutral-300 hover:shadow-sm">
                           <div className="flex items-center justify-between">
                             <s.icon className="h-4 w-4 text-neutral-400 group-hover:text-neutral-600 transition-colors" />
                             <ChevronRight className="h-3.5 w-3.5 text-neutral-200 group-hover:text-neutral-400 transition-colors" />
                           </div>
-                          <p className="mt-3 text-2xl font-semibold text-neutral-900">{s.value}</p>
-                          <p className="mt-0.5 text-[12px] text-neutral-500">{s.label}</p>
+                          <p className="mt-3 text-2xl font-semibold text-neutral-900 dark:text-white">{s.value}</p>
+                          <p className="mt-0.5 text-[12px] text-neutral-500 dark:text-neutral-400">{s.label}</p>
                         </button>
                       ))}
                     </div>
@@ -383,13 +393,13 @@ export function PetOwnerDashboardPage() {
                     </div>
                     <div className="space-y-2">
                       {pets.slice(0, 4).map((pet) => (
-                        <div key={pet.id} className="group flex items-center gap-3.5 rounded-xl border border-neutral-200/80 bg-white p-3.5 transition-all hover:border-neutral-300 hover:shadow-sm cursor-pointer" onClick={() => setActiveTab("pets")}>
+                        <div key={pet.id} className="group flex items-center gap-3.5 rounded-xl border border-neutral-200/80 bg-white dark:border-neutral-800 dark:bg-neutral-900 p-3.5 transition-all hover:border-neutral-300 hover:shadow-sm cursor-pointer" onClick={() => setActiveTab("pets")}>
                           <Avatar className="h-11 w-11 rounded-xl ring-2 ring-neutral-100">
                             {pet.photoDataUrl ? <AvatarImage src={pet.photoDataUrl} alt={pet.name} className="rounded-xl object-cover" /> : null}
                             <AvatarFallback className="rounded-xl text-lg bg-neutral-100">{pet.emoji}</AvatarFallback>
                           </Avatar>
                           <div className="flex-1 min-w-0">
-                            <p className="text-[13px] font-semibold text-neutral-900">{pet.name}</p>
+                            <p className="text-[13px] font-semibold text-neutral-900 dark:text-white">{pet.name}</p>
                             <p className="text-[12px] text-neutral-500">{pet.breed}</p>
                           </div>
                           <div className="text-right">
@@ -415,14 +425,14 @@ export function PetOwnerDashboardPage() {
                     </div>
                     <div className="space-y-2">
                       {predictions.map((item) => (
-                        <div key={item.id} className="rounded-xl border border-neutral-200/80 bg-white p-4 transition-all hover:border-neutral-300 hover:shadow-sm">
+                        <div key={item.id} className="rounded-xl border border-neutral-200/80 bg-white dark:border-neutral-800 dark:bg-neutral-900 p-4 transition-all hover:border-neutral-300 hover:shadow-sm">
                           <div className="flex items-start justify-between gap-3">
                             <div className="flex items-start gap-3 min-w-0">
                               <div className={cn("mt-0.5 flex h-8 w-8 shrink-0 items-center justify-center rounded-lg", item.risk === "high" ? "bg-red-50" : item.risk === "moderate" ? "bg-amber-50" : "bg-emerald-50")}>
                                 <TrendingUp className={cn("h-4 w-4", riskColors[item.risk])} />
                               </div>
                               <div className="min-w-0">
-                                <p className="text-[13px] font-semibold text-neutral-900">{item.title}</p>
+                                <p className="text-[13px] font-semibold text-neutral-900 dark:text-white">{item.title}</p>
                                 <p className="text-[11px] text-neutral-500">{item.pet} &middot; {item.age}</p>
                               </div>
                             </div>
@@ -431,7 +441,7 @@ export function PetOwnerDashboardPage() {
                           {/* Confidence bar */}
                           <div className="mt-3 flex items-center gap-3">
                             <div className="flex-1">
-                              <div className="h-1.5 w-full rounded-full bg-neutral-100">
+                              <div className="h-1.5 w-full rounded-full bg-neutral-100 dark:bg-neutral-800">
                                 <div className={cn("h-1.5 rounded-full transition-all duration-700", riskBg[item.risk])} style={{ width: `${item.confidence}%` }} />
                               </div>
                             </div>
@@ -455,25 +465,25 @@ export function PetOwnerDashboardPage() {
                 <div className="flex items-center justify-between">
                   <div>
                     <h2 className="text-xl font-semibold text-neutral-900">My Pets</h2>
-                    <p className="mt-0.5 text-sm text-neutral-500">Manage your pet profiles</p>
+                    <p className="mt-0.5 text-sm text-neutral-500 dark:text-neutral-400">Manage your pet profiles</p>
                   </div>
                   <Badge variant="outline">{pets.length} registered</Badge>
                 </div>
 
-                <div className="rounded-xl border border-neutral-200/80 bg-white p-5">
+                <div className="rounded-xl border border-neutral-200/80 bg-white dark:border-neutral-800 dark:bg-neutral-900 p-5">
                   <h3 className="text-[13px] font-semibold text-neutral-900">Add new pet</h3>
                   <div className="mt-4 space-y-5">
                     <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
                       <div className="space-y-1.5"><Label className="text-[12px]">Name</Label><Input value={newPet.name} onChange={(e) => setNewPet((p) => ({ ...p, name: e.target.value }))} placeholder="Pet name" /></div>
                       <div className="space-y-1.5"><Label className="text-[12px]">Species</Label>
-                        <select value={newPet.species} onChange={(e) => setNewPet((p) => ({ ...p, species: e.target.value, breed: "" }))} className="flex h-9 w-full rounded-lg border border-neutral-200 bg-white px-3 text-sm shadow-xs focus:border-neutral-400 focus:outline-none focus:ring-2 focus:ring-neutral-950/5"><option>Dog</option><option>Cat</option></select>
+                        <select value={newPet.species} onChange={(e) => setNewPet((p) => ({ ...p, species: e.target.value, breed: "" }))} className="flex h-9 w-full rounded-lg border border-neutral-200 bg-white px-3 text-sm shadow-xs focus:border-neutral-400 focus:outline-none focus:ring-2 focus:ring-neutral-950/5 dark:border-neutral-700 dark:bg-neutral-800 dark:text-neutral-100"><option>Dog</option><option>Cat</option></select>
                       </div>
                       <div className="space-y-1.5">
                       <Label className="text-[12px]">Breed</Label>
                       <select
                         value={newPet.breed}
                         onChange={(e) => setNewPet((p) => ({ ...p, breed: e.target.value }))}
-                        className="flex h-9 w-full rounded-lg border border-neutral-200 bg-white px-3 text-sm shadow-xs focus:border-neutral-400 focus:outline-none focus:ring-2 focus:ring-neutral-950/5"
+                        className="flex h-9 w-full rounded-lg border border-neutral-200 bg-white px-3 text-sm shadow-xs focus:border-neutral-400 focus:outline-none focus:ring-2 focus:ring-neutral-950/5 dark:border-neutral-700 dark:bg-neutral-800 dark:text-neutral-100"
                       >
                         <option value="">Select breed</option>
                         {(breedsBySpecies[newPet.species] ?? []).map((b) => (
@@ -500,7 +510,7 @@ export function PetOwnerDashboardPage() {
 
                 <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
                   {pets.map((pet) => (
-                    <div key={pet.id} className="group rounded-xl border border-neutral-200/80 bg-white p-4 transition-all hover:border-neutral-300 hover:shadow-sm">
+                    <div key={pet.id} className="group rounded-xl border border-neutral-200/80 bg-white dark:border-neutral-800 dark:bg-neutral-900 p-4 transition-all hover:border-neutral-300 hover:shadow-sm">
                       <div className="flex items-start justify-between">
                         <div className="flex items-center gap-3">
                           <Avatar className="h-12 w-12 rounded-xl ring-2 ring-neutral-100">
@@ -508,7 +518,7 @@ export function PetOwnerDashboardPage() {
                             <AvatarFallback className="rounded-xl text-xl bg-neutral-100">{pet.emoji}</AvatarFallback>
                           </Avatar>
                           <div>
-                            <p className="text-[14px] font-semibold text-neutral-900">{pet.name}</p>
+                            <p className="text-[14px] font-semibold text-neutral-900 dark:text-white">{pet.name}</p>
                             <p className="text-[12px] text-neutral-500">{pet.species} &middot; {pet.breed}</p>
                           </div>
                         </div>
@@ -516,12 +526,12 @@ export function PetOwnerDashboardPage() {
                       </div>
                       <Separator className="my-3" />
                       <div className="grid grid-cols-2 gap-2 text-center">
-                        <div className="rounded-lg bg-neutral-50 px-3 py-2">
-                          <p className="text-[15px] font-semibold text-neutral-900">{pet.age}</p>
+                        <div className="rounded-lg bg-neutral-50 dark:bg-neutral-800 px-3 py-2">
+                          <p className="text-[15px] font-semibold text-neutral-900 dark:text-white">{pet.age}</p>
                           <p className="text-[10px] text-neutral-400">Years old</p>
                         </div>
-                        <div className="rounded-lg bg-neutral-50 px-3 py-2">
-                          <p className="text-[15px] font-semibold text-neutral-900">{pet.weightKg}</p>
+                        <div className="rounded-lg bg-neutral-50 dark:bg-neutral-800 px-3 py-2">
+                          <p className="text-[15px] font-semibold text-neutral-900 dark:text-white">{pet.weightKg}</p>
                           <p className="text-[10px] text-neutral-400">Kg weight</p>
                         </div>
                       </div>
@@ -537,15 +547,15 @@ export function PetOwnerDashboardPage() {
                 <div className="mb-4 flex items-center justify-between">
                   <div>
                     <h2 className="text-xl font-semibold text-neutral-900">AI Health Assistant</h2>
-                    <p className="mt-0.5 text-sm text-neutral-500">Describe symptoms for AI-powered guidance</p>
+                    <p className="mt-0.5 text-sm text-neutral-500 dark:text-neutral-400">Describe symptoms for AI-powered guidance</p>
                   </div>
                   <Badge variant="info" className="gap-1"><Sparkles className="h-3 w-3" />Powered by AI</Badge>
                 </div>
-                <div className="flex-1 overflow-y-auto rounded-xl border border-neutral-200/80 bg-white p-5">
+                <div className="flex-1 overflow-y-auto rounded-xl border border-neutral-200/80 bg-white dark:border-neutral-800 dark:bg-neutral-900 p-5">
                   <div className="mx-auto max-w-2xl space-y-3">
                     {messages.map((m) => (
                       <div key={m.id} className={cn("max-w-[80%] rounded-xl px-4 py-2.5 text-[13px] leading-relaxed",
-                        m.sender === "owner" ? "ml-auto bg-neutral-900 text-white" : "bg-neutral-50 text-neutral-800 border border-neutral-100")}>
+                        m.sender === "owner" ? "ml-auto bg-neutral-900 text-white dark:bg-white dark:text-neutral-900" : "bg-neutral-50 text-neutral-800 border border-neutral-100 dark:bg-neutral-800 dark:text-neutral-200 dark:border-neutral-700")}>
                         {m.sender === "assistant" && <p className="mb-1 text-[10px] font-semibold uppercase tracking-wider text-neutral-400">AI Assistant</p>}
                         {m.text}
                       </div>
@@ -563,7 +573,7 @@ export function PetOwnerDashboardPage() {
             {activeTab === "clinics" && (
               <div className="space-y-6 animate-in">
                 <div className="flex items-center justify-between">
-                  <div><h2 className="text-xl font-semibold text-neutral-900">Clinics & Appointments</h2><p className="mt-0.5 text-sm text-neutral-500">Find clinics and manage bookings</p></div>
+                  <div><h2 className="text-xl font-semibold text-neutral-900">Clinics & Appointments</h2><p className="mt-0.5 text-sm text-neutral-500 dark:text-neutral-400">Find clinics and manage bookings</p></div>
                   {nearbyClinics.length > 0 && <Badge variant="success">{nearbyClinics.length} available</Badge>}
                 </div>
                 {locationError && <div className="flex items-center gap-2 rounded-lg border border-amber-200 bg-amber-50 px-4 py-2.5 text-[13px] text-amber-800"><Info className="h-4 w-4 shrink-0" />{locationError}</div>}
@@ -571,7 +581,7 @@ export function PetOwnerDashboardPage() {
                 {appointments.length > 0 && (
                   <div>
                     <h3 className="mb-3 text-[13px] font-semibold text-neutral-900">My Appointments</h3>
-                    <div className="divide-y divide-neutral-100 rounded-xl border border-neutral-200/80 bg-white">
+                    <div className="divide-y divide-neutral-100 dark:divide-neutral-800 rounded-xl border border-neutral-200/80 bg-white dark:border-neutral-800 dark:bg-neutral-900">
                       {appointments.map((appt) => {
                         const clinic = clinics.find((c) => c.id === appt.clinicId);
                         const surgeon = clinic?.surgeons.find((s) => s.id === appt.surgeonId);
@@ -587,7 +597,7 @@ export function PetOwnerDashboardPage() {
                             </div>
                             {appt.status !== "cancelled" && slots.length > 0 && (
                               <div className="mt-2 flex items-center gap-2">
-                                <select value={rescheduleSlotByAppointment[appt.id] || ""} onChange={(e) => setRescheduleSlotByAppointment((p) => ({ ...p, [appt.id]: e.target.value }))} className="h-7 flex-1 rounded border border-neutral-200 px-2 text-xs text-neutral-700 focus:outline-none">
+                                <select value={rescheduleSlotByAppointment[appt.id] || ""} onChange={(e) => setRescheduleSlotByAppointment((p) => ({ ...p, [appt.id]: e.target.value }))} className="h-7 flex-1 rounded border border-neutral-200 px-2 text-xs text-neutral-700 focus:outline-none dark:border-neutral-700 dark:bg-neutral-800 dark:text-neutral-300">
                                   <option value="">Reschedule to...</option>{slots.map((s) => <option key={s} value={s}>{s}</option>)}
                                 </select>
                                 <Button size="sm" variant="secondary" onClick={() => handleRescheduleAppointment(appt)}>Reschedule</Button>
@@ -604,25 +614,25 @@ export function PetOwnerDashboardPage() {
                 {nearbyClinics.length === 0 ? (
                   <div className="rounded-xl border border-dashed border-neutral-300 bg-white px-4 py-10 text-center"><MapPin className="mx-auto mb-2 h-5 w-5 text-neutral-300" /><p className="text-sm text-neutral-500">No clinics available yet.</p></div>
                 ) : nearbyClinics.map((clinic) => (
-                  <div key={clinic.id} className="rounded-xl border border-neutral-200/80 bg-white">
+                  <div key={clinic.id} className="rounded-xl border border-neutral-200/80 bg-white dark:border-neutral-800 dark:bg-neutral-900">
                     <div className="flex items-start justify-between p-5">
-                      <div><p className="text-[14px] font-semibold text-neutral-900">{clinic.name}</p><p className="mt-0.5 text-[12px] text-neutral-500">{clinic.address} &middot; {clinic.phone}</p><Badge variant="info" className="mt-1.5">{clinic.specialization}</Badge>
+                      <div><p className="text-[14px] font-semibold text-neutral-900 dark:text-white">{clinic.name}</p><p className="mt-0.5 text-[12px] text-neutral-500">{clinic.address} &middot; {clinic.phone}</p><Badge variant="info" className="mt-1.5">{clinic.specialization}</Badge>
                         {userLocation && typeof clinic.latitude === "number" && typeof clinic.longitude === "number" && <p className="mt-1 text-[11px] text-neutral-400">{distanceKm(userLocation.latitude, userLocation.longitude, clinic.latitude, clinic.longitude).toFixed(1)} km away</p>}
                       </div>
-                      <div className="space-y-1.5"><Label className="text-[11px]">Pet</Label><select value={bookingPetByClinic[clinic.id] || pets[0]?.id || ""} onChange={(e) => setBookingPetByClinic((p) => ({ ...p, [clinic.id]: e.target.value }))} className="h-7 rounded border border-neutral-200 px-2 text-xs focus:outline-none">{pets.map((p) => <option key={p.id} value={p.id}>{p.name}</option>)}</select></div>
+                      <div className="space-y-1.5"><Label className="text-[11px]">Pet</Label><select value={bookingPetByClinic[clinic.id] || pets[0]?.id || ""} onChange={(e) => setBookingPetByClinic((p) => ({ ...p, [clinic.id]: e.target.value }))} className="h-7 rounded border border-neutral-200 px-2 text-xs focus:outline-none dark:border-neutral-700 dark:bg-neutral-800 dark:text-neutral-300">{pets.map((p) => <option key={p.id} value={p.id}>{p.name}</option>)}</select></div>
                     </div>
                     {clinic.surgeons.length > 0 && (
-                      <div className="border-t border-neutral-100 p-5 pt-4">
+                      <div className="border-t border-neutral-100 dark:border-neutral-800 p-5 pt-4">
                         <p className="mb-3 text-[11px] font-semibold uppercase tracking-wider text-neutral-400">Surgeons & Availability</p>
                         <div className="space-y-4">
                           {clinic.surgeons.map((surgeon) => (
                             <div key={surgeon.id}>
-                              <p className="text-[13px] font-medium text-neutral-900">{surgeon.name}</p>
+                              <p className="text-[13px] font-medium text-neutral-900 dark:text-white">{surgeon.name}</p>
                               <p className="text-[11px] text-neutral-500">{surgeon.specialization}</p>
                               <div className="mt-2 flex flex-wrap gap-1.5">
                                 {surgeon.availableSlots.length === 0 ? <span className="text-[11px] text-neutral-400">No slots</span> : surgeon.availableSlots.map((slot) => {
                                   const booked = isSlotBooked(clinic.id, surgeon.id, slot);
-                                  return <button key={slot} onClick={() => handleBookAppointment(clinic, surgeon, slot)} disabled={booked} className={cn("inline-flex items-center gap-1 rounded-md px-2 py-1 text-[11px] font-medium transition", booked ? "bg-neutral-100 text-neutral-400 cursor-not-allowed" : "bg-neutral-900 text-white hover:bg-neutral-800")}><Clock className="h-3 w-3" />{slot}</button>;
+                                  return <button key={slot} onClick={() => handleBookAppointment(clinic, surgeon, slot)} disabled={booked} className={cn("inline-flex items-center gap-1 rounded-md px-2 py-1 text-[11px] font-medium transition", booked ? "bg-neutral-100 text-neutral-400 cursor-not-allowed dark:bg-neutral-800 dark:text-neutral-600" : "bg-neutral-900 text-white hover:bg-neutral-800 dark:bg-white dark:text-neutral-900 dark:hover:bg-neutral-200")}><Clock className="h-3 w-3" />{slot}</button>;
                                 })}
                               </div>
                               <div className="mt-2 flex gap-2"><Input value={inquiryBySurgeon[`${clinic.id}_${surgeon.id}`] || ""} onChange={(e) => setInquiryBySurgeon((p) => ({ ...p, [`${clinic.id}_${surgeon.id}`]: e.target.value }))} placeholder="Send inquiry..." className="h-7 flex-1 text-xs" /><Button size="sm" variant="secondary" onClick={() => handleSendInquiry(clinic, surgeon)}><Send className="h-3 w-3" /></Button></div>
@@ -637,9 +647,9 @@ export function PetOwnerDashboardPage() {
                 {surgeonInquiries.length > 0 && (
                   <div>
                     <h3 className="mb-3 text-[13px] font-semibold text-neutral-900">Inquiries</h3>
-                    <div className="divide-y divide-neutral-100 rounded-xl border border-neutral-200/80 bg-white">
+                    <div className="divide-y divide-neutral-100 dark:divide-neutral-800 rounded-xl border border-neutral-200/80 bg-white dark:border-neutral-800 dark:bg-neutral-900">
                       {surgeonInquiries.slice(0, 8).map((inq) => (
-                        <div key={inq.id} className="flex items-center justify-between px-4 py-3"><div className="min-w-0"><p className="text-[13px] font-medium text-neutral-900">{inq.surgeonName}</p><p className="text-[12px] text-neutral-500 truncate">{inq.message}</p></div><Badge variant={inq.status === "replied" ? "success" : "warning"}>{inq.status}</Badge></div>
+                        <div key={inq.id} className="flex items-center justify-between px-4 py-3"><div className="min-w-0"><p className="text-[13px] font-medium text-neutral-900 dark:text-white">{inq.surgeonName}</p><p className="text-[12px] text-neutral-500 truncate">{inq.message}</p></div><Badge variant={inq.status === "replied" ? "success" : "warning"}>{inq.status}</Badge></div>
                       ))}
                     </div>
                   </div>
@@ -650,8 +660,8 @@ export function PetOwnerDashboardPage() {
             {/* ═══ PROFILE ═══ */}
             {activeTab === "profile" && (
               <div className="max-w-2xl space-y-6 animate-in">
-                <div><h2 className="text-xl font-semibold text-neutral-900">Account</h2><p className="mt-0.5 text-sm text-neutral-500">Manage your profile information</p></div>
-                <div className="rounded-xl border border-neutral-200/80 bg-white p-5">
+                <div><h2 className="text-xl font-semibold text-neutral-900">Account</h2><p className="mt-0.5 text-sm text-neutral-500 dark:text-neutral-400">Manage your profile information</p></div>
+                <div className="rounded-xl border border-neutral-200/80 bg-white dark:border-neutral-800 dark:bg-neutral-900 p-5">
                   <div className="mb-5 space-y-2">
                     <Label className="text-[12px] font-medium text-neutral-700">Profile photo</Label>
                     <Dropzone

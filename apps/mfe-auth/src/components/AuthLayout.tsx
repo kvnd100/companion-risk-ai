@@ -76,10 +76,10 @@ export function AuthLayout({ children, minimal }: AuthLayoutProps) {
       {/* Right content panel */}
       <div className="flex flex-1 flex-col">
         {/* Mobile header */}
-        <div className="flex items-center justify-between border-b border-neutral-200 bg-white px-5 py-3 lg:hidden">
+        <div className="flex items-center justify-between border-b border-neutral-200 bg-white px-5 py-3 lg:hidden dark:border-neutral-800 dark:bg-neutral-900">
           <div className="flex items-center gap-2">
-            <div className="flex h-7 w-7 items-center justify-center rounded-md bg-neutral-900">
-              <svg viewBox="0 0 24 24" fill="white" className="h-3.5 w-3.5">
+            <div className="flex h-7 w-7 items-center justify-center rounded-md bg-neutral-900 dark:bg-white">
+              <svg viewBox="0 0 24 24" className="h-3.5 w-3.5 fill-white dark:fill-neutral-900">
                 <ellipse cx="12" cy="17.5" rx="3.5" ry="3" />
                 <circle cx="8.2" cy="11.2" r="1.8" />
                 <circle cx="15.8" cy="11.2" r="1.8" />
@@ -87,12 +87,12 @@ export function AuthLayout({ children, minimal }: AuthLayoutProps) {
                 <circle cx="17.5" cy="14.8" r="1.6" />
               </svg>
             </div>
-            <span className="text-sm font-semibold text-neutral-900">PetCare AI</span>
+            <span className="text-sm font-semibold text-neutral-900 dark:text-white">PetCare AI</span>
           </div>
         </div>
 
         {/* Content area */}
-        <div className="flex flex-1 items-center justify-center bg-neutral-50 px-5 py-8 sm:px-8 lg:bg-white">
+        <div className="flex flex-1 items-center justify-center bg-neutral-50 px-5 py-8 sm:px-8 lg:bg-white dark:bg-neutral-950 lg:dark:bg-neutral-950">
           <div className="w-full max-w-[400px] animate-in">
             {children}
           </div>

@@ -5,6 +5,7 @@ import App from "./App";
 import { Toaster } from "./components/Toaster";
 import { TooltipProvider } from "./components/ui/tooltip";
 import "./index.css";
+import "./lib/theme"; // initialize theme on load
 
 if ("serviceWorker" in navigator && window.location.hostname === "localhost") {
   navigator.serviceWorker.getRegistrations().then((registrations) => {
